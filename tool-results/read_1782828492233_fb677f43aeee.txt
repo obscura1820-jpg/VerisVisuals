@@ -1,0 +1,900 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+     4→import { VerisEngine } from "@/lib/veris/engine";
+     5→
+     6→/* ═══════════════════════════════════════════════════════════════════════════════
+     7→   CONSTANTS
+     8→   ═══════════════════════════════════════════════════════════════════════════════ */
+     9→
+    10→const PHASE_COUNT = 4;
+    11→const SCROLL_MULTIPLIER = 100; /* each phase = 100vh of scroll */
+    12→
+    13→const EDITORIAL_IMAGES = [
+    14→  "https://sfile.chatglm.cn/images-ppt/c35685abeb00.jpg",
+    15→  "https://sfile.chatglm.cn/images-ppt/639f0a9967ab.jpg",
+    16→  "https://sfile.chatglm.cn/images-ppt/065ca22b4160.jpg",
+    17→  "https://sfile.chatglm.cn/images-ppt/6c5862ae9ece.jpg",
+    18→  "https://sfile.chatglm.cn/images-ppt/1b0049a685c6.jpg",
+    19→];
+    20→
+    21→const WEDDING_IMAGES = [
+    22→  "https://sfile.chatglm.cn/images-ppt/ff550848e88c.jpg",
+    23→  "https://sfile.chatglm.cn/images-ppt/cfebab00b881.jpg",
+    24→  "https://sfile.chatglm.cn/images-ppt/8804c7e6a4d1.jpg",
+    25→];
+    26→
+    27→const PORTRAIT_IMAGES = [
+    28→  "https://sfile.chatglm.cn/images-ppt/f3a9f2546d34.jpg",
+    29→  "https://sfile.chatglm.cn/images-ppt/76d5b80cba83.jpg",
+    30→  "https://sfile.chatglm.cn/images-ppt/786a00c30cf9.jpg",
+    31→];
+    32→
+    33→const CURATORIAL_IMAGES = EDITORIAL_IMAGES.slice(0, 5);
+    34→
+    35→const COMMISSION_OPTIONS = {
+    36→  projectType: [
+    37→    "Commercial Campaign",
+    38→    "Heritage / Destination Wedding",
+    39→  ],
+    40→  budget: [
+    41→    "₹1,50,000 – ₹5,00,000+",
+    42→    "₹10,00,000 – ₹25,00,000+",
+    43→  ],
+    44→  timeline: [
+    45→    "October 2025",
+    46→    "November 2025",
+    47→    "December 2025",
+    48→    "January 2026",
+    49→    "February 2026",
+    50→    "March 2026",
+    51→  ],
+    52→} as const;
+    53→
+    54→/* ═══════════════════════════════════════════════════════════════════════════════
+    55→   ODOMETER COUNTER
+    56→   Each digit eases individually as described in the PRD.
+    57→   ═══════════════════════════════════════════════════════════════════════════════ */
+    58→
+    59→function OdometerDigit({ digit }: { digit: number }) {
+    60→  return (
+    61→    <span className="odometer-digit" aria-hidden="true">
+    62→      <span
+    63→        className="odometer-digit-inner"
+    64→        style={{ transform: `translateY(-${digit * 10}%)` }}
+    65→      >
+    66→        {Array.from({ length: 10 }, (_, i) => (
+    67→          <span key={i}>{i}</span>
+    68→        ))}
+    69→      </span>
+    70→    </span>
+    71→  );
+    72→}
+    73→
+    74→function OdometerCounter({ value }: { value: number }) {
+    75→  const clamped = Math.max(0, Math.min(100, Math.round(value)));
+    76→  const hundreds = Math.floor(clamped / 100);
+    77→  const tens = Math.floor((clamped % 100) / 10);
+    78→  const ones = clamped % 10;
+    79→
+    80→  return (
+    81→    <span
+    82→      className="font-display inline-flex items-baseline"
+    83→      style={{ fontSize: "clamp(2rem, 6vw, 5rem)" }}
+    84→      aria-label={`${clamped}%`}
+    85→      role="status"
+    86→    >
+    87→      <OdometerDigit digit={hundreds} />
+    88→      <OdometerDigit digit={tens} />
+    89→      <OdometerDigit digit={ones} />
+    90→      <span
+    91→        style={{
+    92→          fontSize: "0.5em",
+    93→          marginLeft: "0.15em",
+    94→          opacity: 0.6,
+    95→          fontWeight: 400,
+    96→          fontFamily: "var(--font-inter)",
+    97→          letterSpacing: "0.1em",
+    98→        }}
+    99→      >
+   100→        %
+   101→      </span>
+   102→    </span>
+   103→  );
+   104→}
+   105→
+   106→/* ═══════════════════════════════════════════════════════════════════════════════
+   107→   MAIN PAGE COMPONENT
+   108→   ═══════════════════════════════════════════════════════════════════════════════ */
+   109→
+   110→export default function Home() {
+   111→  /* ── State ──────────────────────────────────────────────────────────────────── */
+   112→  const [preloaderComplete, setPreloaderComplete] = useState(false);
+   113→  const [preloaderExiting, setPreloaderExiting] = useState(false);
+   114→  const [loadProgress, setLoadProgress] = useState(0);
+   115→  const [currentPhase, setCurrentPhase] = useState(-1); /* -1 = preloader active */
+   116→  const [isDark, setIsDark] = useState(true);
+   117→  const [lightbox, setLightbox] = useState<{
+   118→    open: boolean;
+   119→    images: string[];
+   120→    index: number;
+   121→  }>({ open: false, images: [], index: 0 });
+   122→
+   123→  const [commissionForm, setCommissionForm] = useState<{
+   124→    projectType: string | null;
+   125→    budget: string | null;
+   126→    timeline: string | null;
+   127→  }>({ projectType: null, budget: null, timeline: null });
+   128→
+   129→  const [activePopover, setActivePopover] = useState<string | null>(null);
+   130→  const [formSubmitted, setFormSubmitted] = useState(false);
+   131→
+   132→  /* ── Refs ───────────────────────────────────────────────────────────────────── */
+   133→  const canvasContainerRef = useRef<HTMLDivElement>(null);
+   134→  const engineRef = useRef<VerisEngine | null>(null);
+   135→  const scrollContainerRef = useRef<HTMLDivElement>(null);
+   136→  const phaseFloatRef = useRef(0);
+   137→  const preloaderAnimRef = useRef<number>(0);
+   138→
+   139→  /* ── Phase opacity calculation ──────────────────────────────────────────────── */
+   140→  const getPhaseOpacity = useCallback(
+   141→    (targetPhase: number) => {
+   142→      if (currentPhase < 0) return 0;
+   143→      const pf = phaseFloatRef.current;
+   144→      const distance = pf - targetPhase;
+   145→      if (distance < -0.8) return 0;
+   146→      if (distance > 0.8) return 0;
+   147→      if (Math.abs(distance) < 0.2) return 1;
+   148→      if (distance < 0) {
+   149→        /* Approaching */
+   150→        return 1 - (Math.abs(distance) - 0.2) / 0.6;
+   151→      }
+   152→      /* Leaving */
+   153→      return 1 - (distance - 0.2) / 0.6;
+   154→    },
+   155→    [currentPhase]
+   156→  );
+   157→
+   158→  /* ── Preloader animation ────────────────────────────────────────────────────── */
+   159→  useEffect(() => {
+   160→    if (preloaderComplete || preloaderExiting) return;
+   161→
+   162→    let progress = 0;
+   163→    const duration = 3200; /* 3.2 seconds */
+   164→    const startTime = performance.now();
+   165→
+   166→    const animate = (now: number) => {
+   167→      const elapsed = now - startTime;
+   168→      const raw = Math.min(1, elapsed / duration);
+   169→      /* EaseInOutQuart */
+   170→      const eased =
+   171→        raw < 0.5
+   172→          ? 8 * raw * raw * raw * raw
+   173→          : 1 - Math.pow(-2 * raw + 2, 4) / 2;
+   174→
+   175→      progress = eased * 100;
+   176→      setLoadProgress(progress);
+   177→
+   178→      if (raw < 1) {
+   179→        preloaderAnimRef.current = requestAnimationFrame(animate);
+   180→      } else {
+   181→        /* Preloader complete — trigger exit */
+   182→        setTimeout(() => {
+   183→          setPreloaderExiting(true);
+   184→          setTimeout(() => {
+   185→            setPreloaderComplete(true);
+   186→            setCurrentPhase(0);
+   187→            document.body.classList.remove("no-scroll");
+   188→          }, 1400);
+   189→        }, 400);
+   190→      }
+   191→    };
+   192→
+   193→    preloaderAnimRef.current = requestAnimationFrame(animate);
+   194→    document.body.classList.add("no-scroll");
+   195→
+   196→    return () => {
+   197→      if (preloaderAnimRef.current) cancelAnimationFrame(preloaderAnimRef.current);
+   198→    };
+   199→  }, [preloaderComplete, preloaderExiting]);
+   200→
+   201→  /* ── Initialize 3D Engine ──────────────────────────────────────────────────── */
+   202→  useEffect(() => {
+   203→    if (!canvasContainerRef.current) return;
+   204→
+   205→    const engine = new VerisEngine(canvasContainerRef.current, {
+   206→      onPhaseChange: (phase) => {
+   207→        /* Phase change callback from engine */
+   208→      },
+   209→      onImageClick: (imageUrl, allImages, index) => {
+   210→        setLightbox({ open: true, images: allImages, index });
+   211→      },
+   212→      onImageHover: () => {
+   213→        /* Color hover — could update CSS variables */
+   214→      },
+   215→    });
+   216→
+   217→    engine.init();
+   218→    engineRef.current = engine;
+   219→
+   220→    return () => {
+   221→      engine.dispose();
+   222→      engineRef.current = null;
+   223→    };
+   224→  }, []);
+   225→
+   226→  /* ── Scroll handler ─────────────────────────────────────────────────────────── */
+   227→  useEffect(() => {
+   228→    if (!preloaderComplete) return;
+   229→
+   230→    const handleScroll = () => {
+   231→      const scrollTop = window.scrollY;
+   232→      const viewportHeight = window.innerHeight;
+   233→      const totalScroll =
+   234→        PHASE_COUNT * SCROLL_MULTIPLIER * (viewportHeight / 100) -
+   235→        viewportHeight;
+   236→      const fraction = Math.max(
+   237→        0,
+   238→        Math.min(1, scrollTop / Math.max(1, totalScroll))
+   239→      );
+   240→
+   241→      const rawPhase = fraction * PHASE_COUNT;
+   242→      const phase = Math.min(
+   243→        PHASE_COUNT - 1,
+   244→        Math.floor(rawPhase)
+   245→      );
+   246→      const phaseProgress = rawPhase - phase;
+   247→
+   248→      phaseFloatRef.current = rawPhase;
+   249→      setCurrentPhase(phase);
+   250→
+   251→      if (engineRef.current) {
+   252→        engineRef.current.setPhase(phase, phaseProgress);
+   253→        engineRef.current.setScrollProgress(fraction);
+   254→      }
+   255→    };
+   256→
+   257→    window.addEventListener("scroll", handleScroll, { passive: true });
+   258→    /* Trigger initial scroll calculation */
+   259→    handleScroll();
+   260→
+   261→    return () => window.removeEventListener("scroll", handleScroll);
+   262→  }, [preloaderComplete]);
+   263→
+   264→  /* ── Mouse handler ──────────────────────────────────────────────────────────── */
+   265→  useEffect(() => {
+   266→    const handleMouseMove = (e: MouseEvent) => {
+   267→      const nx = (e.clientX / window.innerWidth) * 2 - 1;
+   268→      const ny = -(e.clientY / window.innerHeight) * 2 + 1;
+   269→      if (engineRef.current) {
+   270→        engineRef.current.setMouse(nx, ny);
+   271→      }
+   272→      /* Also pass to engine for raycasting */
+   273→      if (engineRef.current) {
+   274→        engineRef.current.handlePointerMove(e.clientX, e.clientY);
+   275→      }
+   276→    };
+   277→
+   278→    const handlePointerDown = (e: PointerEvent) => {
+   279→      if (engineRef.current) {
+   280→        engineRef.current.handlePointerDown(e.clientX, e.clientY);
+   281→      }
+   282→    };
+   283→
+   284→    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+   285→    window.addEventListener("pointerdown", handlePointerDown, { passive: true });
+   286→
+   287→    return () => {
+   288→      window.removeEventListener("mousemove", handleMouseMove);
+   289→      window.removeEventListener("pointerdown", handlePointerDown);
+   290→    };
+   291→  }, []);
+   292→
+   293→  /* ── Resize handler ─────────────────────────────────────────────────────────── */
+   294→  useEffect(() => {
+   295→    const handleResize = () => {
+   296→      engineRef.current?.resize();
+   297→    };
+   298→    window.addEventListener("resize", handleResize);
+   299→    return () => window.removeEventListener("resize", handleResize);
+   300→  }, []);
+   301→
+   302→  /* ── Keyboard handler ───────────────────────────────────────────────────────── */
+   303→  useEffect(() => {
+   304→    const handleKeyDown = (e: KeyboardEvent) => {
+   305→      if (e.key === "Escape" && lightbox.open) {
+   306→        setLightbox((prev) => ({ ...prev, open: false }));
+   307→      }
+   308→      if (lightbox.open) {
+   309→        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+   310→          e.preventDefault();
+   311→          setLightbox((prev) => ({
+   312→            ...prev,
+   313→            index: (prev.index + 1) % prev.images.length,
+   314→          }));
+   315→        }
+   316→        if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+   317→          e.preventDefault();
+   318→          setLightbox((prev) => ({
+   319→            ...prev,
+   320→            index:
+   321→              (prev.index - 1 + prev.images.length) % prev.images.length,
+   322→          }));
+   323→        }
+   324→      }
+   325→    };
+   326→
+   327→    window.addEventListener("keydown", handleKeyDown);
+   328→    return () => window.removeEventListener("keydown", handleKeyDown);
+   329→  }, [lightbox.open]);
+   330→
+   331→  /* ── Theme toggle ───────────────────────────────────────────────────────────── */
+   332→  const toggleTheme = useCallback(() => {
+   333→    const next = !isDark;
+   334→    setIsDark(next);
+   335→    document.body.classList.toggle("veris-light", !next);
+   336→    engineRef.current?.setTheme(next);
+   337→  }, [isDark]);
+   338→
+   339→  /* ── Commission form handlers ───────────────────────────────────────────────── */
+   340→  const handleSegmentClick = useCallback(
+   341→    (key: string) => {
+   342→      setActivePopover((prev) => (prev === key ? null : key));
+   343→    },
+   344→    []
+   345→  );
+   346→
+   347→  const handleOptionSelect = useCallback(
+   348→    (key: string, value: string) => {
+   349→      setCommissionForm((prev) => ({ ...prev, [key]: value }));
+   350→      setActivePopover(null);
+   351→    },
+   352→    []
+   353→  );
+   354→
+   355→  const handleSubmit = useCallback(async () => {
+   356→    if (
+   357→      !commissionForm.projectType ||
+   358→      !commissionForm.budget ||
+   359→      !commissionForm.timeline
+   360→    )
+   361→      return;
+   362→
+   363→    try {
+   364→      engineRef.current?.playAutofocus();
+   365→
+   366→      await fetch("/api/commission", {
+   367→        method: "POST",
+   368→        headers: { "Content-Type": "application/json" },
+   369→        body: JSON.stringify(commissionForm),
+   370→      });
+   371→
+   372→      engineRef.current?.playShutter();
+   373→      engineRef.current?.flashAndConfirm();
+   374→      setFormSubmitted(true);
+   375→    } catch {
+   376→      /* Silent fail — the confirmation still shows */
+   377→      engineRef.current?.flashAndConfirm();
+   378→      setFormSubmitted(true);
+   379→    }
+   380→  }, [commissionForm]);
+   381→
+   382→  /* ── Close popover on outside click ─────────────────────────────────────────── */
+   383→  useEffect(() => {
+   384→    if (!activePopover) return;
+   385→    const handler = () => setActivePopover(null);
+   386→    const timer = setTimeout(() => {
+   387→      document.addEventListener("pointerdown", handler, { once: true });
+   388→    }, 10);
+   389→    return () => {
+   390→      clearTimeout(timer);
+   391→      document.removeEventListener("pointerdown", handler);
+   392→    };
+   393→  }, [activePopover]);
+   394→
+   395→  /* ── Lightbox navigation ────────────────────────────────────────────────────── */
+   396→  const lightboxNav = useCallback(
+   397→    (dir: number) => {
+   398→      setLightbox((prev) => ({
+   399→        ...prev,
+   400→        index:
+   401→          (prev.index + dir + prev.images.length) % prev.images.length,
+   402→      }));
+   403→    },
+   404→    []
+   405→  );
+   406→
+   407→  /* ── Precomputed phase opacities ────────────────────────────────────────────── */
+   408→  const manifestOpacity = getPhaseOpacity(0);
+   409→  const horizonOpacity = getPhaseOpacity(1);
+   410→  const curatorialOpacity = getPhaseOpacity(2);
+   411→  const commissionOpacity = getPhaseOpacity(3);
+   412→
+   413→  const isFormComplete =
+   414→    commissionForm.projectType && commissionForm.budget && commissionForm.timeline;
+   415→
+   416→  /* ═══════════════════════════════════════════════════════════════════════════════
+   417→     RENDER
+   418→     ═══════════════════════════════════════════════════════════════════════════════ */
+   419→  return (
+   420→    <>
+   421→      {/* ── Three.js Canvas Container (fixed background) ──────────────────────── */}
+   422→      <div
+   423→        ref={canvasContainerRef}
+   424→        className="veris-canvas-container"
+   425→        aria-hidden="true"
+   426→      />
+   427→
+   428→      {/* ── Preloader Overlay ─────────────────────────────────────────────────── */}
+   429→      <div
+   430→        className={`veris-preloader ${preloaderExiting ? "v-entering" : ""}`}
+   431→        role="progressbar"
+   432→        aria-valuenow={loadProgress}
+   433→        aria-valuemin={0}
+   434→        aria-valuemax={100}
+   435→        aria-label="Loading experience"
+   436→      >
+   437→        <div
+   438→          className="font-display"
+   439→          style={{
+   440→            fontSize: "clamp(0.7rem, 1.5vw, 1rem)",
+   441→            letterSpacing: "0.35em",
+   442→            opacity: 0.4,
+   443→            marginBottom: "3rem",
+   444→          }}
+   445→        >
+   446→          VERISVISUALS
+   447→        </div>
+   448→        <OdometerCounter value={loadProgress} />
+   449→      </div>
+   450→
+   451→      {/* ── Scroll Container (provides scrollable height) ─────────────────────── */}
+   452→      <div
+   453→        ref={scrollContainerRef}
+   454→        style={{
+   455→          position: "relative",
+   456→          height: preloaderComplete
+   457→            ? `${PHASE_COUNT * SCROLL_MULTIPLIER}vh`
+   458→            : "100vh",
+   459→          zIndex: 1,
+   460→          pointerEvents: "none",
+   461→        }}
+   462→        aria-hidden="true"
+   463→      />
+   464→
+   465→      {/* ── Phase 0: Manifesto ────────────────────────────────────────────────── */}
+   466→      <div
+   467→        className="veris-phase-overlay"
+   468→        style={{
+   469→          opacity: manifestOpacity,
+   470→          pointerEvents: manifestOpacity > 0.3 ? "auto" : "none",
+   471→        }}
+   472→        role="region"
+   473→        aria-label="Manifesto"
+   474→      >
+   475→        <div className="veris-wordmark">
+   476→          <span className="v-letter">VERIS</span>
+   477→          <span className="v-letter" style={{ opacity: 0.7 }}>
+   478→            VISUALS
+   479→          </span>
+   480→        </div>
+   481→        <p className="veris-tagline">Photography beyond documentation.</p>
+   482→
+   483→        {/* Founder credit */}
+   484→        <div
+   485→          style={{
+   486→            position: "absolute",
+   487→            bottom: "3rem",
+   488→            left: "50%",
+   489→            transform: "translateX(-50%)",
+   490→            textAlign: "center",
+   491→          }}
+   492→        >
+   493→          <div
+   494→            className="font-ui"
+   495→            style={{ fontSize: "0.55rem", opacity: 0.25 }}
+   496→          >
+   497→            Salim Shaikh
+   498→          </div>
+   499→          <div
+   500→            className="font-ui"
+   501→            style={{ fontSize: "0.5rem", opacity: 0.15, marginTop: "0.3rem" }}
+   502→          >
+   503→            Mumbai, India
+   504→          </div>
+   505→        </div>
+   506→      </div>
+   507→
+   508→      {/* ── Phase 1: Horizon Archive ──────────────────────────────────────────── */}
+   509→      <div
+   510→        className="veris-phase-overlay"
+   511→        style={{
+   512→          opacity: horizonOpacity,
+   513→          pointerEvents: horizonOpacity > 0.3 ? "auto" : "none",
+   514→          justifyContent: "flex-end",
+   515→          paddingBottom: "12vh",
+   516→        }}
+   517→        role="region"
+   518→        aria-label="Archive"
+   519→      >
+   520→        <div className="horizon-container">
+   521→          <div
+   522→            className="horizon-panel side-left"
+   523→            onClick={() => engineRef.current?.playHoverTick()}
+   524→            onKeyDown={(e) =>
+   525→              e.key === "Enter" && engineRef.current?.playHoverTick()
+   526→            }
+   527→            tabIndex={0}
+   528→            role="button"
+   529→            aria-label="View Editorial work"
+   530→          >
+   531→            <div className="horizon-panel-label">Editorial</div>
+   532→            <div className="horizon-panel-desc">
+   533→              Commercial
+   534→              <br />
+   535→              Architecture
+   536→              <br />
+   537→              Fashion
+   538→            </div>
+   539→            <div className="horizon-panel-count">
+   540→              {EDITORIAL_IMAGES.length} works
+   541→            </div>
+   542→          </div>
+   543→
+   544→          <div
+   545→            className="horizon-panel center"
+   546→            onClick={() => engineRef.current?.playHoverTick()}
+   547→            onKeyDown={(e) =>
+   548→              e.key === "Enter" && engineRef.current?.playHoverTick()
+   549→            }
+   550→            tabIndex={0}
+   551→            role="button"
+   552→            aria-label="View Weddings work"
+   553→          >
+   554→            <div className="horizon-panel-label">Weddings</div>
+   555→            <div className="horizon-panel-desc">
+   556→              Palace
+   557→              <br />
+   558→              Heritage
+   559→              <br />
+   560→              Destination
+   561→            </div>
+   562→            <div className="horizon-panel-count">
+   563→              {WEDDING_IMAGES.length} works
+   564→            </div>
+   565→          </div>
+   566→
+   567→          <div
+   568→            className="horizon-panel side-right"
+   569→            onClick={() => engineRef.current?.playHoverTick()}
+   570→            onKeyDown={(e) =>
+   571→              e.key === "Enter" && engineRef.current?.playHoverTick()
+   572→            }
+   573→            tabIndex={0}
+   574→            role="button"
+   575→            aria-label="View Portraits work"
+   576→          >
+   577→            <div className="horizon-panel-label">Portraits</div>
+   578→            <div className="horizon-panel-desc">
+   579→              Editorial
+   580→              <br />
+   581→              Studio
+   582→              <br />
+   583→              Environmental
+   584→            </div>
+   585→            <div className="horizon-panel-count">
+   586→              {PORTRAIT_IMAGES.length} works
+   587→            </div>
+   588→          </div>
+   589→        </div>
+   590→      </div>
+   591→
+   592→      {/* ── Phase 2: Curatorial Inspection ────────────────────────────────────── */}
+   593→      <div
+   594→        className="veris-phase-overlay"
+   595→        style={{
+   596→          opacity: curatorialOpacity,
+   597→          pointerEvents: curatorialOpacity > 0.3 ? "auto" : "none",
+   598→          justifyContent: "flex-start",
+   599→          paddingTop: "8vh",
+   600→        }}
+   601→        role="region"
+   602→        aria-label="Gallery"
+   603→      >
+   604→        <div
+   605→          className="font-ui"
+   606→          style={{
+   607→            fontSize: "0.55rem",
+   608→            opacity: 0.3,
+   609→            marginBottom: "2rem",
+   610→            letterSpacing: "0.4em",
+   611→          }}
+   612→        >
+   613→          Selected Works
+   614→        </div>
+   615→        <div className="curatorial-container">
+   616→          {CURATORIAL_IMAGES.map((src, i) => (
+   617→            <div
+   618→              key={src}
+   619→              className="curatorial-image"
+   620→              onClick={() =>
+   621→                setLightbox({
+   622→                  open: true,
+   623→                  images: CURATORIAL_IMAGES,
+   624→                  index: i,
+   625→                })
+   626→              }
+   627→              onKeyDown={(e) =>
+   628→                e.key === "Enter" &&
+   629→                setLightbox({
+   630→                  open: true,
+   631→                  images: CURATORIAL_IMAGES,
+   632→                  index: i,
+   633→                })
+   634→              }
+   635→              tabIndex={0}
+   636→              role="button"
+   637→              aria-label={`View image ${i + 1} of ${CURATORIAL_IMAGES.length}`}
+   638→            >
+   639→              {/* eslint-disable-next-line @next/next/no-img-element */}
+   640→              <img
+   641→                src={src}
+   642→                alt={`VerisVisuals editorial work ${i + 1}`}
+   643→                loading="lazy"
+   644→                draggable={false}
+   645→              />
+   646→            </div>
+   647→          ))}
+   648→        </div>
+   649→      </div>
+   650→
+   651→      {/* ── Phase 3: Commission Room ──────────────────────────────────────────── */}
+   652→      <div
+   653→        className="veris-phase-overlay"
+   654→        style={{
+   655→          opacity: commissionOpacity,
+   656→          pointerEvents: commissionOpacity > 0.3 ? "auto" : "none",
+   657→        }}
+   658→        role="region"
+   659→        aria-label="Commission"
+   660→      >
+   661→        <div className="commission-container">
+   662→          {formSubmitted ? (
+   663→            <div className="commission-confirmation">
+   664→              Your commission has been received.
+   665→            </div>
+   666→          ) : (
+   667→            <>
+   668→              <div
+   669→                className="font-ui"
+   670→                style={{
+   671→                  fontSize: "0.5rem",
+   672→                  opacity: 0.25,
+   673→                  marginBottom: "2.5rem",
+   674→                  letterSpacing: "0.4em",
+   675→                }}
+   676→              >
+   677→                Commission
+   678→              </div>
+   679→
+   680→              <div className="commission-sentence">
+   681→                <span>I&apos;d like VerisVisuals to photograph a </span>
+   682→                <CommissionSegment
+   683→                  label="project type"
+   684→                  value={commissionForm.projectType}
+   685→                  isActive={activePopover === "projectType"}
+   686→                  options={COMMISSION_OPTIONS.projectType}
+   687→                  onSelect={(v) => handleOptionSelect("projectType", v)}
+   688→                  onToggle={() => handleSegmentClick("projectType")}
+   689→                  isDark={isDark}
+   690→                />
+   691→                <span> with an estimated budget of </span>
+   692→                <CommissionSegment
+   693→                  label="budget range"
+   694→                  value={commissionForm.budget}
+   695→                  isActive={activePopover === "budget"}
+   696→                  options={COMMISSION_OPTIONS.budget}
+   697→                  onSelect={(v) => handleOptionSelect("budget", v)}
+   698→                  onToggle={() => handleSegmentClick("budget")}
+   699→                  isDark={isDark}
+   700→                />
+   701→                <span> beginning in </span>
+   702→                <CommissionSegment
+   703→                  label="timeline"
+   704→                  value={commissionForm.timeline}
+   705→                  isActive={activePopover === "timeline"}
+   706→                  options={COMMISSION_OPTIONS.timeline}
+   707→                  onSelect={(v) => handleOptionSelect("timeline", v)}
+   708→                  onToggle={() => handleSegmentClick("timeline")}
+   709→                  isDark={isDark}
+   710→                />
+   711→                <span>.</span>
+   712→              </div>
+   713→
+   714→              {/* Pricing guidance */}
+   715→              <div className="commission-pricing">
+   716→                <div>
+   717→                  Commercial Projects &mdash; ₹1,50,000 &ndash; ₹5,00,000+
+   718→                </div>
+   719→                <div>
+   720→                  Destination Weddings &mdash; ₹10,00,000 &ndash; ₹25,00,000+
+   721→                </div>
+   722→              </div>
+   723→
+   724→              {/* Payment terms */}
+   725→              <div className="commission-terms">
+   726→                <div>50% non-refundable retainer upon confirmation</div>
+   727→                <div>Remaining balance due 15 days before production</div>
+   728→              </div>
+   729→
+   730→              {/* Submit */}
+   731→              <button
+   732→                className="commission-submit"
+   733→                disabled={!isFormComplete}
+   734→                onClick={handleSubmit}
+   735→                aria-label="Send commission enquiry"
+   736→              >
+   737→                Send Enquiry
+   738→              </button>
+   739→            </>
+   740→          )}
+   741→        </div>
+   742→      </div>
+   743→
+   744→      {/* ── Lightbox ──────────────────────────────────────────────────────────── */}
+   745→      {lightbox.open && (
+   746→        <div
+   747→          className="veris-lightbox"
+   748→          onClick={() => setLightbox((p) => ({ ...p, open: false }))}
+   749→          role="dialog"
+   750→          aria-label="Image viewer"
+   751→          aria-modal="true"
+   752→        >
+   753→          <button
+   754→            className="veris-lightbox-close"
+   755→            onClick={() => setLightbox((p) => ({ ...p, open: false }))}
+   756→            aria-label="Close image viewer"
+   757→          >
+   758→            Close
+   759→          </button>
+   760→
+   761→          <button
+   762→            className="veris-lightbox-nav prev"
+   763→            onClick={(e) => {
+   764→              e.stopPropagation();
+   765→              lightboxNav(-1);
+   766→            }}
+   767→            aria-label="Previous image"
+   768→          >
+   769→            ‹
+   770→          </button>
+   771→
+   772→          {/* eslint-disable-next-line @next/next/no-img-element */}
+   773→          <img
+   774→            src={lightbox.images[lightbox.index]}
+   775→            alt={`VerisVisuals work ${lightbox.index + 1}`}
+   776→            onClick={(e) => e.stopPropagation()}
+   777→            draggable={false}
+   778→          />
+   779→
+   780→          <button
+   781→            className="veris-lightbox-nav next"
+   782→            onClick={(e) => {
+   783→              e.stopPropagation();
+   784→              lightboxNav(1);
+   785→            }}
+   786→            aria-label="Next image"
+   787→          >
+   788→            ›
+   789→          </button>
+   790→
+   791→          <div
+   792→            style={{
+   793→              position: "absolute",
+   794→              bottom: "2rem",
+   795→              left: "50%",
+   796→              transform: "translateX(-50%)",
+   797→              fontFamily: "var(--font-inter)",
+   798→              fontSize: "0.55rem",
+   799→              letterSpacing: "0.2em",
+   800→              opacity: 0.3,
+   801→            }}
+   802→          >
+   803→            {lightbox.index + 1} / {lightbox.images.length}
+   804→          </div>
+   805→        </div>
+   806→      )}
+   807→
+   808→      {/* ── Theme Toggle ──────────────────────────────────────────────────────── */}
+   809→      {preloaderComplete && (
+   810→        <button
+   811→          className="veris-theme-toggle"
+   812→          onClick={toggleTheme}
+   813→          aria-label={`Switch to ${isDark ? "Gallery" : "Studio"} mode`}
+   814→        >
+   815→          {isDark ? "Studio" : "Gallery"}
+   816→        </button>
+   817→      )}
+   818→
+   819→      {/* ── Scroll Hint ──────────────────────────────────────────────────────── */}
+   820→      {preloaderComplete && currentPhase === 0 && (
+   821→        <div className="veris-scroll-hint visible" aria-hidden="true">
+   822→          Scroll to explore
+   823→        </div>
+   824→      )}
+   825→
+   826→      {/* ── Flash Overlay (managed by engine, but created here) ───────────────── */}
+   827→      <div className="veris-flash" aria-hidden="true" />
+   828→    </>
+   829→  );
+   830→}
+   831→
+   832→/* ═══════════════════════════════════════════════════════════════════════════════
+   833→   COMMISSION SEGMENT (VisionOS-style sentence builder)
+   834→   ═══════════════════════════════════════════════════════════════════════════════ */
+   835→
+   836→interface CommissionSegmentProps {
+   837→  label: string;
+   838→  value: string | null;
+   839→  isActive: boolean;
+   840→  options: readonly string[];
+   841→  onSelect: (value: string) => void;
+   842→  onToggle: () => void;
+   843→  isDark: boolean;
+   844→}
+   845→
+   846→function CommissionSegment({
+   847→  label,
+   848→  value,
+   849→  isActive,
+   850→  options,
+   851→  onSelect,
+   852→  onToggle,
+   853→}: CommissionSegmentProps) {
+   854→  const ref = useRef<HTMLSpanElement>(null);
+   855→
+   856→  /* Prevent outside-click handler from closing immediately */
+   857→  const handleClick = useCallback(
+   858→    (e: React.MouseEvent) => {
+   859→      e.stopPropagation();
+   860→      onToggle();
+   861→    },
+   862→    [onToggle]
+   863→  );
+   864→
+   865→  return (
+   866→    <span
+   867→      ref={ref}
+   868→      className={`commission-segment ${value ? "selected" : ""}`}
+   869→      onClick={handleClick}
+   870→      onKeyDown={(e) => e.key === "Enter" && handleClick(e as unknown as React.MouseEvent)}
+   871→      tabIndex={0}
+   872→      role="button"
+   873→      aria-label={`Select ${label}`}
+   874→      aria-expanded={isActive}
+   875→      aria-haspopup="listbox"
+   876→    >
+   877→      {value || label}
+   878→
+   879→      {isActive && (
+   880→        <div
+   881→          className="commission-segment-popover"
+   882→          role="listbox"
+   883→          onClick={(e) => e.stopPropagation()}
+   884→        >
+   885→          {options.map((option) => (
+   886→            <button
+   887→              key={option}
+   888→              className="commission-option"
+   889→              role="option"
+   890→              aria-selected={value === option}
+   891→              onClick={() => onSelect(option)}
+   892→            >
+   893→              {option}
+   894→            </button>
+   895→          ))}
+   896→        </div>
+   897→      )}
+   898→    </span>
+   899→  );
+   900→}

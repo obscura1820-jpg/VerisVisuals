@@ -1,0 +1,1224 @@
+     1→/**
+     2→ * VerisVisuals 3D WebGL Engine
+     3→ * ============================
+     4→ * Core Three.js rendering engine for the VerisVisuals luxury photography portfolio.
+     5→ * Manages scenes, lighting, particles, glass panels, gallery images, phases, themes,
+     6→ * and audio — all orchestrated through a scroll-driven phase system.
+     7→ *
+     8→ * Author: VerisVisuals — Salim Shaikh, Mumbai, India
+     9→ */
+    10→
+    11→import * as THREE from 'three';
+    12→import gsap from 'gsap';
+    13→
+    14→// ─── Image Asset URLs ────────────────────────────────────────────────────────
+    15→
+    16→const EDITORIAL_IMAGES = [
+    17→  'https://sfile.chatglm.cn/images-ppt/c35685abeb00.jpg',
+    18→  'https://sfile.chatglm.cn/images-ppt/639f0a9967ab.jpg',
+    19→  'https://sfile.chatglm.cn/images-ppt/065ca22b4160.jpg',
+    20→  'https://sfile.chatglm.cn/images-ppt/6c5862ae9ece.jpg',
+    21→  'https://sfile.chatglm.cn/images-ppt/1b0049a685c6.jpg',
+    22→];
+    23→
+    24→const WEDDING_IMAGES = [
+    25→  'https://sfile.chatglm.cn/images-ppt/ff550848e88c.jpg',
+    26→  'https://sfile.chatglm.cn/images-ppt/cfebab00b881.jpg',
+    27→  'https://sfile.chatglm.cn/images-ppt/8804c7e6a4d1.jpg',
+    28→];
+    29→
+    30→const PORTRAIT_IMAGES = [
+    31→  'https://sfile.chatglm.cn/images-ppt/f3a9f2546d34.jpg',
+    32→  'https://sfile.chatglm.cn/images-ppt/76d5b80cba83.jpg',
+    33→  'https://sfile.chatglm.cn/images-ppt/786a00c30cf9.jpg',
+    34→];
+    35→
+    36→const ADDITIONAL_IMAGES = [
+    37→  'https://sfile.chatglm.cn/images-ppt/2f9cf6ab2266.jpg',
+    38→  'https://sfile.chatglm.cn/images-ppt/10c5baa44e15.jpeg',
+    39→];
+    40→
+    41→/** All images shown in the curatorial (gallery) phase — first 5 editorial images */
+    42→const CURATORIAL_IMAGES = EDITORIAL_IMAGES.slice(0, 5);
+    43→
+    44→// ─── Theme Color Definitions ─────────────────────────────────────────────────
+    45→
+    46→const DARK_BG = new THREE.Color(0x050505);
+    47→const DARK_FG = new THREE.Color(0xf5f5f5);
+    48→const LIGHT_BG = new THREE.Color(0xf9f9f9);
+    49→const LIGHT_FG = new THREE.Color(0x111111);
+    50→
+    51→// ─── Phase Camera Targets ────────────────────────────────────────────────────
+    52→
+    53→const PHASE_CAM_TARGETS: Record<number, { x: number; y: number; z: number }> = {
+    54→  0: { x: 0, y: 0, z: 15 },     // Preloader — far away, black
+    55→  1: { x: 0, y: 1.2, z: 8 },    // Manifesto — close, centered
+    56→  2: { x: 0, y: 1.2, z: 8 },    // Horizon — same position, panels visible
+    57→  3: { x: 0, y: 0.5, z: 7 },    // Curatorial — lower, closer, gallery visible
+    58→  4: { x: 0, y: -3, z: 5 },     // Commission — rotated down, dark
+    59→};
+    60→
+    61→// ─── Gallery Image Layout (asymmetric editorial grid) ────────────────────────
+    62→
+    63→const GALLERY_LAYOUT = [
+    64→  { url: CURATORIAL_IMAGES[0], pos: [-2.5, 0.8, 0] as [number, number, number], scale: [1.2, 1.6] as [number, number] },
+    65→  { url: CURATORIAL_IMAGES[1], pos: [0.5, -0.3, 0.5] as [number, number, number], scale: [1.4, 1.0] as [number, number] },
+    66→  { url: CURATORIAL_IMAGES[2], pos: [2.8, 0.5, -0.3] as [number, number, number], scale: [1.0, 1.4] as [number, number] },
+    67→  { url: CURATORIAL_IMAGES[3], pos: [-1.0, -1.0, 0.3] as [number, number, number], scale: [1.3, 0.9] as [number, number] },
+    68→  { url: CURATORIAL_IMAGES[4], pos: [1.5, 1.2, -0.2] as [number, number, number], scale: [0.9, 1.2] as [number, number] },
+    69→];
+    70→
+    71→// ─── Glass Panel Label Text ──────────────────────────────────────────────────
+    72→
+    73→const PANEL_LABELS = ['EDITORIAL', 'WEDDINGS', 'PORTRAITS'];
+    74→
+    75→// ─── Callbacks Interface ─────────────────────────────────────────────────────
+    76→
+    77→export interface VerisCallbacks {
+    78→  onPhaseChange?: (phase: number) => void;
+    79→  onImageClick?: (imageUrl: string, allImages: string[], index: number) => void;
+    80→  onImageHover?: (color: { r: number; g: number; b: number }) => void;
+    81→}
+    82→
+    83→// ─── Internal Types ──────────────────────────────────────────────────────────
+    84→
+    85→interface GlassPanel {
+    86→  mesh: THREE.Mesh;
+    87→  material: THREE.MeshPhysicalMaterial;
+    88→  targetOpacity: number;
+    89→}
+    90→
+    91→interface GalleryPlane {
+    92→  mesh: THREE.Mesh;
+    93→  material: THREE.MeshBasicMaterial;
+    94→  texture: THREE.Texture | null;
+    95→  layoutIndex: number;
+    96→}
+    97→
+    98→// ─── VerisEngine Class ───────────────────────────────────────────────────────
+    99→
+   100→export class VerisEngine {
+   101→  // Core Three.js objects
+   102→  private renderer: THREE.WebGLRenderer;
+   103→  private scene: THREE.Scene;
+   104→  private camera: THREE.PerspectiveCamera;
+   105→  private container: HTMLElement;
+   106→  private callbacks: VerisCallbacks;
+   107→  private animFrameId: number = 0;
+   108→
+   109→  // Clock for animation timing
+   110→  private clock: THREE.Clock;
+   111→  private elapsedTime: number = 0;
+   112→
+   113→  // Reduced motion preference
+   114→  private prefersReducedMotion: boolean;
+   115→
+   116→  // Current phase & theme state
+   117→  private currentPhase: number = 0;
+   118→  private scrollProgress: number = 0;
+   119→  private isDark: boolean = true;
+   120→
+   121→  // Mouse state (normalized -1 to 1)
+   122→  private mouseX: number = 0;
+   123→  private mouseY: number = 0;
+   124→  private smoothMouseX: number = 0;
+   125→  private smoothMouseY: number = 0;
+   126→
+   127→  // Lighting references
+   128→  private lightLeft!: THREE.PointLight;
+   129→  private lightCenter!: THREE.PointLight;
+   130→  private lightRight!: THREE.PointLight;
+   131→  private ambientLight!: THREE.AmbientLight;
+   132→
+   133→  // Particle system
+   134→  private particles!: THREE.Points;
+   135→  private particlePositions!: Float32Array;
+   136→  private particleVelocities!: Float32Array;
+   137→
+   138→  // Glass panels (Phase 2 - Horizon)
+   139→  private glassPanels: GlassPanel[] = [];
+   140→
+   141→  // Gallery image planes (Phase 3 - Curatorial)
+   142→  private galleryPlanes: GalleryPlane[] = [];
+   143→  private texturesLoaded: boolean = false;
+   144→  private textureLoader: THREE.TextureLoader;
+   145→
+   146→  // Background color plane
+   147→  private bgPlane!: THREE.Mesh;
+   148→  private bgPlaneMaterial!: THREE.MeshBasicMaterial;
+   149→
+   150→  // Wordmark backing glass (Phase 1 - Manifesto)
+   151→  private wordmarkGlass!: THREE.Mesh;
+   152→  private wordmarkGlassMaterial!: THREE.MeshPhysicalMaterial;
+   153→
+   154→  // Camera animation targets (for GSAP tweening)
+   155→  private camTargetPos: THREE.Vector3 = new THREE.Vector3(0, 0, 15);
+   156→
+   157→  // Phase 4 rotation
+   158→  private commissionRotation: number = 0;
+   159→
+   160→  // Flash overlay for shutter effect
+   161→  private flashOverlay: HTMLDivElement | null = null;
+   162→
+   163→  // Audio context (lazy-initialized on first interaction)
+   164→  private audioCtx: AudioContext | null = null;
+   165→  private audioInitialized: boolean = false;
+   166→
+   167→  // Theme transition state
+   168→  private themeTween: gsap.core.Tween | null = null;
+   169→  private currentBgColor: THREE.Color = DARK_BG.clone();
+   170→  private currentFgColor: THREE.Color = DARK_FG.clone();
+   171→
+   172→  // Whether the engine is disposed
+   173→  private disposed: boolean = false;
+   174→
+   175→  // ─── Constructor ─────────────────────────────────────────────────────────
+   176→
+   177→  constructor(container: HTMLElement, callbacks: VerisCallbacks) {
+   178→    this.container = container;
+   179→    this.callbacks = callbacks;
+   180→    this.textureLoader = new THREE.TextureLoader();
+   181→    this.clock = new THREE.Clock();
+   182→
+   183→    // Detect reduced motion preference
+   184→    this.prefersReducedMotion =
+   185→      typeof window !== 'undefined' &&
+   186→      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+   187→
+   188→    // ── Renderer ──────────────────────────────────────────────────────────
+   189→    this.renderer = new THREE.WebGLRenderer({
+   190→      antialias: true,
+   191→      alpha: true,
+   192→      powerPreference: 'high-performance',
+   193→    });
+   194→    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+   195→    this.renderer.setSize(container.clientWidth, container.clientHeight);
+   196→    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+   197→    this.renderer.toneMappingExposure = 1.15;
+   198→    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+   199→    this.renderer.setClearColor(DARK_BG, 1);
+   200→    container.appendChild(this.renderer.domElement);
+   201→
+   202→    // ── Scene ─────────────────────────────────────────────────────────────
+   203→    this.scene = new THREE.Scene();
+   204→    this.scene.fog = new THREE.FogExp2(0x050505, 0.04);
+   205→    this.scene.background = DARK_BG.clone();
+   206→
+   207→    // ── Camera ────────────────────────────────────────────────────────────
+   208→    this.camera = new THREE.PerspectiveCamera(
+   209→      35,
+   210→      container.clientWidth / container.clientHeight,
+   211→      0.1,
+   212→      300
+   213→    );
+   214→    this.camera.position.set(0, 0, 15);
+   215→
+   216→    // ── Build scene elements ──────────────────────────────────────────────
+   217→    this.setupLighting();
+   218→    this.setupParticles();
+   219→    this.setupBackgroundPlane();
+   220→    this.setupWordmarkGlass();
+   221→    this.setupGlassPanels();
+   222→    this.setupGalleryPlanes();
+   223→    this.setupFlashOverlay();
+   224→
+   225→    // Start with Phase 0 state
+   226→    this.applyPhaseState(0, 0);
+   227→
+   228→    // ── Event listeners ───────────────────────────────────────────────────
+   229→    this.handleResize = this.handleResize.bind(this);
+   230→    this.handleFirstInteraction = this.handleFirstInteraction.bind(this);
+   231→    window.addEventListener('resize', this.handleResize);
+   232→    window.addEventListener('pointerdown', this.handleFirstInteraction, { once: true });
+   233→    window.addEventListener('keydown', this.handleFirstInteraction, { once: true });
+   234→  }
+   235→
+   236→  // ─── Initialization ────────────────────────────────────────────────────────
+   237→
+   238→  /** Start the render loop. Call once after construction. */
+   239→  init(): void {
+   240→    this.clock.start();
+   241→    this.animate();
+   242→  }
+   243→
+   244→  // ─── Lighting Setup ────────────────────────────────────────────────────────
+   245→
+   246→  private setupLighting(): void {
+   247→    // Left point light — warm accent from the left
+   248→    this.lightLeft = new THREE.PointLight(0xffffff, 2, 50, 1.5);
+   249→    this.lightLeft.position.set(-5, 4, 2);
+   250→    this.scene.add(this.lightLeft);
+   251→
+   252→    // Center point light — key light from above-front
+   253→    this.lightCenter = new THREE.PointLight(0xffffff, 2.5, 50, 1.5);
+   254→    this.lightCenter.position.set(0, 5, 5);
+   255→    this.scene.add(this.lightCenter);
+   256→
+   257→    // Right point light — cool accent from the right
+   258→    this.lightRight = new THREE.PointLight(0xffffff, 2, 50, 1.5);
+   259→    this.lightRight.position.set(5, 4, 2);
+   260→    this.scene.add(this.lightRight);
+   261→
+   262→    // Subtle ambient fill
+   263→    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
+   264→    this.scene.add(this.ambientLight);
+   265→  }
+   266→
+   267→  // ─── Particle System ───────────────────────────────────────────────────────
+   268→
+   269→  private setupParticles(): void {
+   270→    const count = 500;
+   271→    const geometry = new THREE.BufferGeometry();
+   272→
+   273→    this.particlePositions = new Float32Array(count * 3);
+   274→    this.particleVelocities = new Float32Array(count * 3);
+   275→
+   276→    for (let i = 0; i < count; i++) {
+   277→      const i3 = i * 3;
+   278→      // Distribute particles in a wide volume around the camera
+   279→      this.particlePositions[i3] = (Math.random() - 0.5) * 30;     // x
+   280→      this.particlePositions[i3 + 1] = (Math.random() - 0.5) * 15; // y
+   281→      this.particlePositions[i3 + 2] = (Math.random() - 0.5) * 20 - 2; // z (slightly behind camera area)
+   282→
+   283→      // Slow, subtle velocities for floating effect
+   284→      this.particleVelocities[i3] = (Math.random() - 0.5) * 0.003;
+   285→      this.particleVelocities[i3 + 1] = (Math.random() - 0.5) * 0.005 + 0.002;
+   286→      this.particleVelocities[i3 + 2] = (Math.random() - 0.5) * 0.002;
+   287→    }
+   288→
+   289→    geometry.setAttribute('position', new THREE.BufferAttribute(this.particlePositions, 3));
+   290→
+   291→    const material = new THREE.PointsMaterial({
+   292→      color: DARK_FG.clone(),
+   293→      size: 0.03,
+   294→      sizeAttenuation: true,
+   295→      transparent: true,
+   296→      opacity: 0.4,
+   297→      depthWrite: false,
+   298→      blending: THREE.AdditiveBlending,
+   299→    });
+   300→
+   301→    this.particles = new THREE.Points(geometry, material);
+   302→    this.scene.add(this.particles);
+   303→  }
+   304→
+   305→  // ─── Background Color Plane ────────────────────────────────────────────────
+   306→
+   307→  private setupBackgroundPlane(): void {
+   308→    const geometry = new THREE.PlaneGeometry(30, 20);
+   309→    this.bgPlaneMaterial = new THREE.MeshBasicMaterial({
+   310→      color: DARK_BG.clone(),
+   311→      transparent: true,
+   312→      opacity: 0,
+   313→      depthWrite: false,
+   314→    });
+   315→    this.bgPlane = new THREE.Mesh(geometry, this.bgPlaneMaterial);
+   316→    this.bgPlane.position.set(0, 0, -5);
+   317→    this.scene.add(this.bgPlane);
+   318→  }
+   319→
+   320→  // ─── Wordmark Glass (Manifesto Phase) ──────────────────────────────────────
+   321→
+   322→  private setupWordmarkGlass(): void {
+   323→    const geometry = new THREE.PlaneGeometry(6, 3);
+   324→    this.wordmarkGlassMaterial = new THREE.MeshPhysicalMaterial({
+   325→      color: 0xffffff,
+   326→      transparent: true,
+   327→      opacity: 0,
+   328→      roughness: 0.08,
+   329→      transmission: 0.9,
+   330→      thickness: 1.2,
+   331→      ior: 1.5,
+   332→      reflectivity: 0.8,
+   333→      clearcoat: 1,
+   334→      clearcoatRoughness: 0.05,
+   335→      side: THREE.DoubleSide,
+   336→      depthWrite: false,
+   337→    });
+   338→    this.wordmarkGlass = new THREE.Mesh(geometry, this.wordmarkGlassMaterial);
+   339→    this.wordmarkGlass.position.set(0, 0.5, -0.5);
+   340→    this.scene.add(this.wordmarkGlass);
+   341→  }
+   342→
+   343→  // ─── Text Label Texture Generator ──────────────────────────────────────────
+   344→
+   345→  /** Creates a canvas-based texture with the given label text */
+   346→  private createLabelTexture(text: string, isDark: boolean): THREE.CanvasTexture {
+   347→    const canvas = document.createElement('canvas');
+   348→    canvas.width = 512;
+   349→    canvas.height = 128;
+   350→    const ctx = canvas.getContext('2d')!;
+   351→
+   352→    // Transparent background
+   353→    ctx.clearRect(0, 0, 512, 128);
+   354→
+   355→    // Text styling — minimal, elegant
+   356→    ctx.font = '600 36px "Helvetica Neue", Arial, sans-serif';
+   357→    ctx.textAlign = 'center';
+   358→    ctx.textBaseline = 'middle';
+   359→    ctx.fillStyle = isDark ? 'rgba(245, 245, 245, 0.6)' : 'rgba(17, 17, 17, 0.6)';
+   360→    ctx.letterSpacing = '8px';
+   361→    ctx.fillText(text, 256, 64);
+   362→
+   363→    const texture = new THREE.CanvasTexture(canvas);
+   364→    texture.needsUpdate = true;
+   365→    return texture;
+   366→  }
+   367→
+   368→  // ─── Glass Panels (Horizon Phase) ──────────────────────────────────────────
+   369→
+   370→  private setupGlassPanels(): void {
+   371→    const positions: [number, number, number][] = [
+   372→      [-3.5, 0, -1],  // Left panel
+   373→      [0, 0, 0],      // Center panel
+   374→      [3.5, 0, -1],   // Right panel
+   375→    ];
+   376→    const rotations: number[] = [-15, 0, 15]; // degrees on Y axis
+   377→    const opacities: number[] = [0.45, 1.0, 0.45]; // center is in focus
+   378→
+   379→    for (let i = 0; i < 3; i++) {
+   380→      const geometry = new THREE.BoxGeometry(2.5, 3.5, 0.15);
+   381→      const material = new THREE.MeshPhysicalMaterial({
+   382→        color: 0xffffff,
+   383→        transparent: true,
+   384→        opacity: 0,
+   385→        roughness: 0.08,
+   386→        transmission: 1.0,
+   387→        thickness: 1.8,
+   388→        ior: 1.52,
+   389→        reflectivity: 0.92,
+   390→        clearcoat: 1,
+   391→        clearcoatRoughness: 0.03,
+   392→        side: THREE.DoubleSide,
+   393→        depthWrite: false,
+   394→      });
+   395→
+   396→      const mesh = new THREE.Mesh(geometry, material);
+   397→      mesh.position.set(...positions[i]);
+   398→      mesh.rotation.y = THREE.MathUtils.degToRad(rotations[i]);
+   399→
+   400→      // Add text label as a decal-like plane on the front face
+   401→      const labelTexture = this.createLabelTexture(PANEL_LABELS[i], this.isDark);
+   402→      const labelMaterial = new THREE.MeshBasicMaterial({
+   403→        map: labelTexture,
+   404→        transparent: true,
+   405→        opacity: 0.6,
+   406→        depthWrite: false,
+   407→        side: THREE.DoubleSide,
+   408→      });
+   409→      const labelGeometry = new THREE.PlaneGeometry(2.2, 0.5);
+   410→      const labelMesh = new THREE.Mesh(labelGeometry, labelMaterial);
+   411→      labelMesh.position.set(0, -1.2, 0.08);
+   412→      mesh.add(labelMesh);
+   413→
+   414→      this.scene.add(mesh);
+   415→      this.glassPanels.push({ mesh, material, targetOpacity: opacities[i] });
+   416→    }
+   417→  }
+   418→
+   419→  // ─── Gallery Image Planes (Curatorial Phase) ───────────────────────────────
+   420→
+   421→  private setupGalleryPlanes(): void {
+   422→    for (let i = 0; i < GALLERY_LAYOUT.length; i++) {
+   423→      const layout = GALLERY_LAYOUT[i];
+   424→
+   425→      const geometry = new THREE.PlaneGeometry(1, 1);
+   426→      const material = new THREE.MeshBasicMaterial({
+   427→        color: 0x333333,
+   428→        transparent: true,
+   429→        opacity: 0,
+   430→        side: THREE.DoubleSide,
+   431→        depthWrite: false,
+   432→      });
+   433→
+   434→      const mesh = new THREE.Mesh(geometry, material);
+   435→      mesh.position.set(...layout.pos);
+   436→      mesh.scale.set(layout.scale[0], layout.scale[1], 1);
+   437→      mesh.visible = false;
+   438→
+   439→      // Raycasting for click/hover interactions
+   440→      mesh.userData = {
+   441→        imageUrl: layout.url,
+   442→        layoutIndex: i,
+   443→        isGalleryPlane: true,
+   444→      };
+   445→
+   446→      this.scene.add(mesh);
+   447→      this.galleryPlanes.push({
+   448→        mesh,
+   449→        material,
+   450→        texture: null,
+   451→        layoutIndex: i,
+   452→      });
+   453→    }
+   454→  }
+   455→
+   456→  /** Lazy-load textures for gallery images */
+   457→  private loadGalleryTextures(): void {
+   458→    if (this.texturesLoaded) return;
+   459→    this.texturesLoaded = true;
+   460→
+   461→    for (let i = 0; i < GALLERY_LAYOUT.length; i++) {
+   462→      const layout = GALLERY_LAYOUT[i];
+   463→      this.textureLoader.load(
+   464→        layout.url,
+   465→        (texture: THREE.Texture) => {
+   466→          if (this.disposed) {
+   467→            texture.dispose();
+   468→            return;
+   469→          }
+   470→          texture.colorSpace = THREE.SRGBColorSpace;
+   471→          texture.minFilter = THREE.LinearFilter;
+   472→          texture.magFilter = THREE.LinearFilter;
+   473→
+   474→          const plane = this.galleryPlanes[i];
+   475→          if (!plane) return;
+   476→          plane.texture = texture;
+   477→          plane.material.map = texture;
+   478→          plane.material.color.set(0xffffff);
+   479→          plane.material.needsUpdate = true;
+   480→        },
+   481→        undefined,
+   482→        () => {
+   483→          // On error, use fallback color (already set to 0x333333)
+   484→          console.warn(`VerisEngine: Failed to load texture ${layout.url}`);
+   485→        }
+   486→      );
+   487→    }
+   488→  }
+   489→
+   490→  // ─── Flash Overlay (Shutter Effect) ────────────────────────────────────────
+   491→
+   492→  private setupFlashOverlay(): void {
+   493→    this.flashOverlay = document.createElement('div');
+   494→    this.flashOverlay.style.cssText = `
+   495→      position: absolute;
+   496→      top: 0; left: 0; right: 0; bottom: 0;
+   497→      background: white;
+   498→      opacity: 0;
+   499→      pointer-events: none;
+   500→      z-index: 10;
+   501→      transition: opacity 0.05s ease;
+   502→    `;
+   503→    this.container.style.position = 'relative';
+   504→    this.container.appendChild(this.flashOverlay);
+   505→  }
+   506→
+   507→  // ─── Phase System ──────────────────────────────────────────────────────────
+   508→
+   509→  /**
+   510→   * Set the current phase and optional progress (0-1) within that phase.
+   511→   * Phases:
+   512→   *   0 = Preloader (black, camera far)
+   513→   *   1 = Manifesto (camera close, wordmark glass visible)
+   514→   *   2 = Horizon (glass panels visible)
+   515→   *   3 = Curatorial (gallery images visible)
+   516→   *   4 = Commission (everything fades, camera rotates down)
+   517→   */
+   518→  setPhase(phase: number, progress: number = 0): void {
+   519→    if (this.disposed) return;
+   520→
+   521→    const clampedPhase = Math.max(0, Math.min(4, Math.round(phase)));
+   522→    const clampedProgress = Math.max(0, Math.min(1, progress));
+   523→
+   524→    if (clampedPhase !== this.currentPhase) {
+   525→      this.currentPhase = clampedPhase;
+   526→      this.callbacks.onPhaseChange?.(clampedPhase);
+   527→    }
+   528→
+   529→    // Lazy-load textures when approaching curatorial phase
+   530→    if (clampedPhase >= 2 && !this.texturesLoaded) {
+   531→      this.loadGalleryTextures();
+   532→    }
+   533→
+   534→    this.applyPhaseState(clampedPhase, clampedProgress);
+   535→  }
+   536→
+   537→  /** Apply visual state for a given phase and progress */
+   538→  private applyPhaseState(phase: number, _progress: number): void {
+   539→    const target = PHASE_CAM_TARGETS[phase] || PHASE_CAM_TARGETS[0];
+   540→
+   541→    // Animate camera to phase target position
+   542→    gsap.to(this.camTargetPos, {
+   543→      x: target.x,
+   544→      y: target.y,
+   545→      z: target.z,
+   546→      duration: this.prefersReducedMotion ? 0 : 2.0,
+   547→      ease: 'power2.inOut',
+   548→    });
+   549→
+   550→    // Phase 0: Preloader — black scene, particles very subtle
+   551→    if (phase === 0) {
+   552→      this.setParticlesOpacity(0.08);
+   553→      this.setGlassPanelsVisibility(false);
+   554→      this.setGalleryVisibility(false);
+   555→      this.setWordmarkGlassVisibility(false);
+   556→      this.setBgPlaneOpacity(0);
+   557→      this.commissionRotation = 0;
+   558→    }
+   559→
+   560→    // Phase 1: Manifesto — camera moves in, wordmark glass appears, particles visible
+   561→    if (phase === 1) {
+   562→      this.setParticlesOpacity(0.4);
+   563→      this.setGlassPanelsVisibility(false);
+   564→      this.setGalleryVisibility(false);
+   565→      this.setWordmarkGlassVisibility(true);
+   566→      this.setBgPlaneOpacity(0);
+   567→      this.commissionRotation = 0;
+   568→    }
+   569→
+   570→    // Phase 2: Horizon — glass panels animate in
+   571→    if (phase === 2) {
+   572→      this.setParticlesOpacity(0.5);
+   573→      this.setGlassPanelsVisibility(true);
+   574→      this.setGalleryVisibility(false);
+   575→      this.setWordmarkGlassVisibility(false);
+   576→      this.setBgPlaneOpacity(0);
+   577→      this.commissionRotation = 0;
+   578→    }
+   579→
+   580→    // Phase 3: Curatorial — panels fade, gallery images appear
+   581→    if (phase === 3) {
+   582→      this.setParticlesOpacity(0.3);
+   583→      this.setGlassPanelsVisibility(false);
+   584→      this.setGalleryVisibility(true);
+   585→      this.setWordmarkGlassVisibility(false);
+   586→      this.setBgPlaneOpacity(1);
+   587→      this.commissionRotation = 0;
+   588→    }
+   589→
+   590→    // Phase 4: Commission — everything fades out, camera rotates down
+   591→    if (phase === 4) {
+   592→      this.setParticlesOpacity(0.05);
+   593→      this.setGlassPanelsVisibility(false);
+   594→      this.setGalleryVisibility(false);
+   595→      this.setWordmarkGlassVisibility(false);
+   596→      this.setBgPlaneOpacity(0);
+   597→      if (!this.prefersReducedMotion) {
+   598→        this.commissionRotation = Math.PI / 2; // 90° downward
+   599→      }
+   600→    }
+   601→  }
+   602→
+   603→  // ─── Visibility Helpers ────────────────────────────────────────────────────
+   604→
+   605→  private setParticlesOpacity(opacity: number): void {
+   606→    if (!this.particles) return;
+   607→    const mat = this.particles.material as THREE.PointsMaterial;
+   608→    gsap.to(mat, {
+   609→      opacity: this.prefersReducedMotion ? opacity : opacity,
+   610→      duration: 1.5,
+   611→      ease: 'power1.inOut',
+   612→    });
+   613→  }
+   614→
+   615→  private setGlassPanelsVisibility(visible: boolean): void {
+   616→    for (const panel of this.glassPanels) {
+   617→      const targetOpacity = visible ? panel.targetOpacity : 0;
+   618→      gsap.to(panel.material, {
+   619→        opacity: targetOpacity,
+   620→        duration: 1.2,
+   621→        ease: 'power2.inOut',
+   622→      });
+   623→    }
+   624→  }
+   625→
+   626→  private setGalleryVisibility(visible: boolean): void {
+   627→    for (const plane of this.galleryPlanes) {
+   628→      plane.mesh.visible = true; // Keep visible for raycasting but animate opacity
+   629→      const targetOpacity = visible ? 1 : 0;
+   630→      gsap.to(plane.material, {
+   631→        opacity: targetOpacity,
+   632→        duration: 1.0,
+   633→        ease: 'power2.out',
+   634→        onComplete: () => {
+   635→          if (!visible) plane.mesh.visible = false;
+   636→        },
+   637→      });
+   638→    }
+   639→  }
+   640→
+   641→  private setWordmarkGlassVisibility(visible: boolean): void {
+   642→    const targetOpacity = visible ? 0.3 : 0;
+   643→    gsap.to(this.wordmarkGlassMaterial, {
+   644→      opacity: targetOpacity,
+   645→      duration: 1.5,
+   646→      ease: 'power2.inOut',
+   647→    });
+   648→  }
+   649→
+   650→  private setBgPlaneOpacity(opacity: number): void {
+   651→    gsap.to(this.bgPlaneMaterial, {
+   652→      opacity,
+   653→      duration: 1.0,
+   654→      ease: 'power1.inOut',
+   655→    });
+   656→  }
+   657→
+   658→  // ─── Theme System ──────────────────────────────────────────────────────────
+   659→
+   660→  /**
+   661→   * Switch between dark and light themes with a smooth 1500ms transition.
+   662→   * Interpolates: background color, fog, glass materials, lights, particles.
+   663→   */
+   664→  setTheme(isDark: boolean): void {
+   665→    if (this.disposed) return;
+   666→    if (this.isDark === isDark) return;
+   667→    this.isDark = isDark;
+   668→
+   669→    const targetBg = isDark ? DARK_BG : LIGHT_BG;
+   670→    const targetFg = isDark ? DARK_FG : LIGHT_FG;
+   671→    const targetFogColor = isDark ? 0x050505 : 0xf0f0f0;
+   672→
+   673→    // Kill any existing theme tween
+   674→    this.themeTween?.kill();
+   675→
+   676→    const duration = this.prefersReducedMotion ? 0 : 1.5;
+   677→    const ease = 'power2.inOut';
+   678→
+   679→    // Animate background color
+   680→    const bgAnim = { r: this.currentBgColor.r, g: this.currentBgColor.g, b: this.currentBgColor.b };
+   681→    this.themeTween = gsap.to(bgAnim, {
+   682→      r: targetBg.r, g: targetBg.g, b: targetBg.b,
+   683→      duration, ease,
+   684→      onUpdate: () => {
+   685→        this.currentBgColor.setRGB(bgAnim.r, bgAnim.g, bgAnim.b);
+   686→        this.scene.background!.copy(this.currentBgColor);
+   687→        this.renderer.setClearColor(this.currentBgColor, 1);
+   688→      },
+   689→    });
+   690→
+   691→    // Animate fog color
+   692→    const fogAnim = { value: (this.scene.fog as THREE.FogExp2).color.getHex() };
+   693→    gsap.to(fogAnim, {
+   694→      value: targetFogColor,
+   695→      duration, ease,
+   696→      onUpdate: () => {
+   697→        (this.scene.fog as THREE.FogExp2).color.setHex(fogAnim.value);
+   698→      },
+   699→    });
+   700→
+   701→    // Animate foreground color (used by particles)
+   702→    const fgAnim = { r: this.currentFgColor.r, g: this.currentFgColor.g, b: this.currentFgColor.b };
+   703→    gsap.to(fgAnim, {
+   704→      r: targetFg.r, g: targetFg.g, b: targetFg.b,
+   705→      duration, ease,
+   706→      onUpdate: () => {
+   707→        this.currentFgColor.setRGB(fgAnim.r, fgAnim.g, fgAnim.b);
+   708→        (this.particles.material as THREE.PointsMaterial).color.copy(this.currentFgColor);
+   709→      },
+   710→    });
+   711→
+   712→    // Animate light intensities — darker in dark mode, brighter in light
+   713→    const targetLeftIntensity = isDark ? 2 : 1.5;
+   714→    const targetCenterIntensity = isDark ? 2.5 : 2.0;
+   715→    const targetRightIntensity = isDark ? 2 : 1.5;
+   716→    const targetAmbientIntensity = isDark ? 0.15 : 0.4;
+   717→
+   718→    gsap.to(this.lightLeft, { intensity: targetLeftIntensity, duration, ease });
+   719→    gsap.to(this.lightCenter, { intensity: targetCenterIntensity, duration, ease });
+   720→    gsap.to(this.lightRight, { intensity: targetRightIntensity, duration, ease });
+   721→    gsap.to(this.ambientLight, { intensity: targetAmbientIntensity, duration, ease });
+   722→
+   723→    // Animate glass panel materials
+   724→    for (const panel of this.glassPanels) {
+   725→      const mat = panel.material;
+   726→      gsap.to(mat, {
+   727→        roughness: isDark ? 0.08 : 0.02,
+   728→        reflectivity: isDark ? 0.92 : 0.98,
+   729→        duration, ease,
+   730→      });
+   731→    }
+   732→
+   733→    // Animate wordmark glass
+   734→    gsap.to(this.wordmarkGlassMaterial, {
+   735→      roughness: isDark ? 0.08 : 0.02,
+   736→      duration, ease,
+   737→    });
+   738→
+   739→    // Update background plane color
+   740→    gsap.to(this.bgPlaneMaterial.color, {
+   741→      r: targetBg.r, g: targetBg.g, b: targetBg.b,
+   742→      duration, ease,
+   743→    });
+   744→
+   745→    // Update label textures on glass panels
+   746→    this.updatePanelLabels(isDark);
+   747→  }
+   748→
+   749→  /** Recreate label textures with the correct theme colors */
+   750→  private updatePanelLabels(isDark: boolean): void {
+   751→    this.glassPanels.forEach((panel, i) => {
+   752→      const labelChild = panel.mesh.children[0];
+   753→      if (labelChild && labelChild instanceof THREE.Mesh) {
+   754→        const mat = labelChild.material as THREE.MeshBasicMaterial;
+   755→        if (mat.map) mat.map.dispose();
+   756→        mat.map = this.createLabelTexture(PANEL_LABELS[i], isDark);
+   757→        mat.needsUpdate = true;
+   758→      }
+   759→    });
+   760→  }
+   761→
+   762→  // ─── Mouse Input ───────────────────────────────────────────────────────────
+   763→
+   764→  /** Feed normalized mouse coordinates (-1 to 1) into the engine for parallax */
+   765→  setMouse(normalizedX: number, normalizedY: number): void {
+   766→    this.mouseX = normalizedX;
+   767→    this.mouseY = normalizedY;
+   768→  }
+   769→
+   770→  // ─── Scroll Progress ───────────────────────────────────────────────────────
+   771→
+   772→  /** Feed scroll progress (0-1) — used by external scroll handler for phase transitions */
+   773→  setScrollProgress(progress: number): void {
+   774→    this.scrollProgress = Math.max(0, Math.min(1, progress));
+   775→  }
+   776→
+   777→  // ─── Audio System ──────────────────────────────────────────────────────────
+   778→
+   779→  /** Initialize AudioContext on first user interaction */
+   780→  private handleFirstInteraction(): void {
+   781→    if (this.audioInitialized || this.disposed) return;
+   782→    this.audioInitialized = true;
+   783→    try {
+   784→      this.audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+   785→    } catch {
+   786→      // Audio not supported — silently fail
+   787→    }
+   788→    window.removeEventListener('pointerdown', this.handleFirstInteraction);
+   789→    window.removeEventListener('keydown', this.handleFirstInteraction);
+   790→  }
+   791→
+   792→  /** Play a subtle hover tick — sine 1200Hz, 15ms */
+   793→  playHoverTick(): void {
+   794→    if (!this.audioCtx || this.prefersReducedMotion) return;
+   795→    try {
+   796→      const osc = this.audioCtx.createOscillator();
+   797→      const gain = this.audioCtx.createGain();
+   798→      osc.type = 'sine';
+   799→      osc.frequency.setValueAtTime(1200, this.audioCtx.currentTime);
+   800→      gain.gain.setValueAtTime(0.08, this.audioCtx.currentTime);
+   801→      gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.015);
+   802→      osc.connect(gain).connect(this.audioCtx.destination);
+   803→      osc.start(this.audioCtx.currentTime);
+   804→      osc.stop(this.audioCtx.currentTime + 0.015);
+   805→    } catch {
+   806→      // Silently fail
+   807→    }
+   808→  }
+   809→
+   810→  /** Play autofocus sound — triangle 850Hz→1400Hz, 35ms, attack 3ms, decay 32ms */
+   811→  playAutofocus(): void {
+   812→    if (!this.audioCtx || this.prefersReducedMotion) return;
+   813→    try {
+   814→      const osc = this.audioCtx.createOscillator();
+   815→      const gain = this.audioCtx.createGain();
+   816→      osc.type = 'triangle';
+   817→      osc.frequency.setValueAtTime(850, this.audioCtx.currentTime);
+   818→      osc.frequency.linearRampToValueAtTime(1400, this.audioCtx.currentTime + 0.035);
+   819→      gain.gain.setValueAtTime(0.001, this.audioCtx.currentTime);
+   820→      gain.gain.linearRampToValueAtTime(0.12, this.audioCtx.currentTime + 0.003); // attack 3ms
+   821→      gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.035); // decay 32ms
+   822→      osc.connect(gain).connect(this.audioCtx.destination);
+   823→      osc.start(this.audioCtx.currentTime);
+   824→      osc.stop(this.audioCtx.currentTime + 0.04);
+   825→    } catch {
+   826→      // Silently fail
+   827→    }
+   828→  }
+   829→
+   830→  /** Play shutter sound — white noise burst + low sine 110Hz, 120ms */
+   831→  playShutter(): void {
+   832→    if (!this.audioCtx || this.prefersReducedMotion) return;
+   833→    try {
+   834→      const now = this.audioCtx.currentTime;
+   835→
+   836→      // White noise burst
+   837→      const bufferSize = this.audioCtx.sampleRate * 0.12;
+   838→      const noiseBuffer = this.audioCtx.createBuffer(1, bufferSize, this.audioCtx.sampleRate);
+   839→      const data = noiseBuffer.getChannelData(0);
+   840→      for (let i = 0; i < bufferSize; i++) {
+   841→        data[i] = (Math.random() * 2 - 1) * 0.3;
+   842→      }
+   843→      const noiseSource = this.audioCtx.createBufferSource();
+   844→      noiseSource.buffer = noiseBuffer;
+   845→      const noiseGain = this.audioCtx.createGain();
+   846→      noiseGain.gain.setValueAtTime(0.001, now);
+   847→      noiseGain.gain.linearRampToValueAtTime(0.15, now + 0.005); // attack 5ms
+   848→      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12); // decay 100ms
+   849→      noiseSource.connect(noiseGain).connect(this.audioCtx.destination);
+   850→      noiseSource.start(now);
+   851→      noiseSource.stop(now + 0.12);
+   852→
+   853→      // Low sine body
+   854→      const osc = this.audioCtx.createOscillator();
+   855→      const oscGain = this.audioCtx.createGain();
+   856→      osc.type = 'sine';
+   857→      osc.frequency.setValueAtTime(110, now);
+   858→      oscGain.gain.setValueAtTime(0.001, now);
+   859→      oscGain.gain.linearRampToValueAtTime(0.1, now + 0.005);
+   860→      oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+   861→      osc.connect(oscGain).connect(this.audioCtx.destination);
+   862→      osc.start(now);
+   863→      osc.stop(now + 0.13);
+   864→    } catch {
+   865→      // Silently fail
+   866→    }
+   867→  }
+   868→
+   869→  /** White flash overlay + return to normal — simulates a camera flash */
+   870→  flashAndConfirm(): void {
+   871→    if (!this.flashOverlay) return;
+   872→    this.playShutter();
+   873→    this.flashOverlay.style.opacity = '0.9';
+   874→    setTimeout(() => {
+   875→      if (this.flashOverlay) {
+   876→        this.flashOverlay.style.opacity = '0';
+   877→      }
+   878→    }, 80);
+   879→  }
+   880→
+   881→  // ─── Image Data Accessors (for HTML overlay) ───────────────────────────────
+   882→
+   883→  getEditorialImages(): string[] {
+   884→    return [...EDITORIAL_IMAGES];
+   885→  }
+   886→
+   887→  getWeddingImages(): string[] {
+   888→    return [...WEDDING_IMAGES];
+   889→  }
+   890→
+   891→  getPortraitImages(): string[] {
+   892→    return [...PORTRAIT_IMAGES];
+   893→  }
+   894→
+   895→  getAllCuratorialImages(): string[] {
+   896→    return [...CURATORIAL_IMAGES];
+   897→  }
+   898→
+   899→  // ─── Raycasting (Image Click / Hover) ──────────────────────────────────────
+   900→
+   901→  private raycaster: THREE.Raycaster = new THREE.Raycaster();
+   902→  private pointer: THREE.Vector2 = new THREE.Vector2();
+   903→  private hoveredPlane: GalleryPlane | null = null;
+   904→
+   905→  /** Check intersections on mouse/touch move — call from external handler */
+   906→  private checkIntersections(clientX: number, clientY: number): void {
+   907→    const rect = this.renderer.domElement.getBoundingClientRect();
+   908→    this.pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+   909→    this.pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+   910→
+   911→    this.raycaster.setFromCamera(this.pointer, this.camera);
+   912→
+   913→    // Only check gallery planes that are visible
+   914→    const visibleMeshes = this.galleryPlanes
+   915→      .filter((p) => p.mesh.visible && p.material.opacity > 0.1)
+   916→      .map((p) => p.mesh);
+   917→
+   918→    const intersects = this.raycaster.intersectObjects(visibleMeshes, false);
+   919→
+   920→    if (intersects.length > 0) {
+   921→      const hitMesh = intersects[0].object as THREE.Mesh;
+   922→      const plane = this.galleryPlanes.find((p) => p.mesh === hitMesh);
+   923→      if (plane && plane !== this.hoveredPlane) {
+   924→        // Hover entered a new plane
+   925→        this.hoveredPlane = plane;
+   926→        this.playHoverTick();
+   927→
+   928→        // Extract average color from texture for the background plane
+   929→        if (plane.texture) {
+   930→          this.sampleTextureColor(plane.texture);
+   931→        }
+   932→
+   933→        // Cursor style
+   934→        this.renderer.domElement.style.cursor = 'pointer';
+   935→      }
+   936→    } else {
+   937→      if (this.hoveredPlane) {
+   938→        this.hoveredPlane = null;
+   939→        this.renderer.domElement.style.cursor = 'default';
+   940→      }
+   941→    }
+   942→  }
+   943→
+   944→  /** Sample the average color from a texture and trigger the hover callback */
+   945→  private sampleTextureColor(texture: THREE.Texture): void {
+   946→    try {
+   947→      // Read pixels from the texture source
+   948→      const source = texture.source;
+   949→      const img = source.data as HTMLImageElement;
+   950→      if (!img || !img.width) return;
+   951→
+   952→      // Create an offscreen canvas to read pixel data
+   953→      const canvas = document.createElement('canvas');
+   954→      const size = 16; // Sample a small region for performance
+   955→      canvas.width = size;
+   956→      canvas.height = size;
+   957→      const ctx = canvas.getContext('2d');
+   958→      if (!ctx) return;
+   959→
+   960→      ctx.drawImage(img, 0, 0, size, size);
+   961→      const imageData = ctx.getImageData(0, 0, size, size);
+   962→      const data = imageData.data;
+   963→
+   964→      let r = 0, g = 0, b = 0;
+   965→      const pixelCount = size * size;
+   966→      for (let i = 0; i < data.length; i += 4) {
+   967→        r += data[i];
+   968→        g += data[i + 1];
+   969→        b += data[i + 2];
+   970→      }
+   971→      r = Math.round(r / pixelCount / 255 * 100) / 100;
+   972→      g = Math.round(g / pixelCount / 255 * 100) / 100;
+   973→      b = Math.round(b / pixelCount / 255 * 100) / 100;
+   974→
+   975→      // Callback with sampled color
+   976→      this.callbacks.onImageHover?.({ r, g, b });
+   977→
+   978→      // Also update the background plane color with a subtle tinted version
+   979→      const bgColor = new THREE.Color(r, g, b).multiplyScalar(0.15);
+   980→      if (this.isDark) {
+   981→        bgColor.addScalar(0.03); // Keep it dark-ish
+   982→      }
+   983→      gsap.to(this.bgPlaneMaterial.color, {
+   984→        r: bgColor.r, g: bgColor.g, b: bgColor.b,
+   985→        duration: 0.6,
+   986→        ease: 'power2.out',
+   987→      });
+   988→
+   989→    } catch {
+   990→      // Fallback: use a neutral color
+   991→      this.callbacks.onImageHover?.({ r: 0.15, g: 0.15, b: 0.15 });
+   992→    }
+   993→  }
+   994→
+   995→  /** Handle click on a gallery image */
+   996→  handlePointerDown(clientX: number, clientY: number): void {
+   997→    this.checkInteractionsClick(clientX, clientY);
+   998→  }
+   999→
+  1000→  handlePointerMove(clientX: number, clientY: number): void {
+  1001→    this.checkInteractions(clientX, clientY);
+  1002→  }
+  1003→
+  1004→  private checkInteractionsClick(clientX: number, clientY: number): void {
+  1005→    const rect = this.renderer.domElement.getBoundingClientRect();
+  1006→    this.pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  1007→    this.pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  1008→
+  1009→    this.raycaster.setFromCamera(this.pointer, this.camera);
+  1010→    const visibleMeshes = this.galleryPlanes
+  1011→      .filter((p) => p.mesh.visible && p.material.opacity > 0.1)
+  1012→      .map((p) => p.mesh);
+  1013→    const intersects = this.raycaster.intersectObjects(visibleMeshes, false);
+  1014→
+  1015→    if (intersects.length > 0) {
+  1016→      const hitMesh = intersects[0].object as THREE.Mesh;
+  1017→      const plane = this.galleryPlanes.find((p) => p.mesh === hitMesh);
+  1018→      if (plane) {
+  1019→        this.playAutofocus();
+  1020→        this.flashAndConfirm();
+  1021→        const url = GALLERY_LAYOUT[plane.layoutIndex].url;
+  1022→        this.callbacks.onImageClick?.(url, CURATORIAL_IMAGES, plane.layoutIndex);
+  1023→      }
+  1024→    }
+  1025→  }
+  1026→
+  1027→  // ─── Animation Loop ────────────────────────────────────────────────────────
+  1028→
+  1029→  private animate = (): void => {
+  1030→    if (this.disposed) return;
+  1031→
+  1032→    this.animFrameId = requestAnimationFrame(this.animate);
+  1033→
+  1034→    const delta = this.clock.getDelta();
+  1035→    if (!this.prefersReducedMotion) {
+  1036→      this.elapsedTime += delta;
+  1037→    }
+  1038→
+  1039→    this.updateCamera(delta);
+  1040→    this.updateParticles(delta);
+  1041→    this.updatePhase4Rotation();
+  1042→
+  1043→    this.renderer.render(this.scene, this.camera);
+  1044→  };
+  1045→
+  1046→  // ─── Camera Update ─────────────────────────────────────────────────────────
+  1047→
+  1048→  private updateCamera(_delta: number): void {
+  1049→    if (this.prefersReducedMotion) {
+  1050→      // No drift, just snap to target
+  1051→      this.camera.position.copy(this.camTargetPos);
+  1052→      this.camera.lookAt(0, 0.5, 0);
+  1053→      return;
+  1054→    }
+  1055→
+  1056→    const t = this.elapsedTime;
+  1057→
+  1058→    // Lissajous drift offsets
+  1059→    const driftX = 0.18 * Math.sin(0.35 * t + Math.PI / 2);
+  1060→    const driftY = 0.10 * Math.sin(0.52 * t);
+  1061→    const driftZ = 0.08 * Math.cos(0.28 * t);
+  1062→
+  1063→    // Mouse parallax with critically damped interpolation
+  1064→    const targetParallaxX = this.mouseX * 0.35;
+  1065→    const targetParallaxY = this.mouseY * 0.20;
+  1066→    this.smoothMouseX += (targetParallaxX - this.smoothMouseX) * 0.06;
+  1067→    this.smoothMouseY += (targetParallaxY - this.smoothMouseY) * 0.06;
+  1068→
+  1069→    // Combine: base target + Lissajous drift + mouse parallax
+  1070→    this.camera.position.x = this.camTargetPos.x + driftX + this.smoothMouseX;
+  1071→    this.camera.position.y = this.camTargetPos.y + driftY + this.smoothMouseY;
+  1072→    this.camera.position.z = this.camTargetPos.z + driftZ;
+  1073→
+  1074→    // Apply commission rotation (Phase 4)
+  1075→    if (this.commissionRotation > 0) {
+  1076→      this.camera.rotation.x = this.commissionRotation;
+  1077→    } else {
+  1078→      this.camera.rotation.x = 0;
+  1079→    }
+  1080→
+  1081→    this.camera.lookAt(0, 0.5, 0);
+  1082→  }
+  1083→
+  1084→  // ─── Particle Animation ────────────────────────────────────────────────────
+  1085→
+  1086→  private updateParticles(delta: number): void {
+  1087→    if (this.prefersReducedMotion) return;
+  1088→
+  1089→    const positions = this.particles.geometry.attributes.position;
+  1090→    const posArray = positions.array as Float32Array;
+  1091→
+  1092→    for (let i = 0; i < posArray.length / 3; i++) {
+  1093→      const i3 = i * 3;
+  1094→
+  1095→      // Apply velocity with gentle floating
+  1096→      posArray[i3] += this.particleVelocities[i3] * delta * 60;
+  1097→      posArray[i3 + 1] += this.particleVelocities[i3 + 1] * delta * 60;
+  1098→      posArray[i3 + 2] += this.particleVelocities[i3 + 2] * delta * 60;
+  1099→
+  1100→      // Add a subtle sine wobble
+  1101→      posArray[i3] += Math.sin(this.elapsedTime * 0.5 + i * 0.1) * 0.0003;
+  1102→      posArray[i3 + 1] += Math.cos(this.elapsedTime * 0.3 + i * 0.15) * 0.0004;
+  1103→
+  1104→      // Wrap particles that drift too far
+  1105→      if (posArray[i3 + 1] > 8) posArray[i3 + 1] = -8;
+  1106→      if (posArray[i3 + 1] < -8) posArray[i3 + 1] = 8;
+  1107→      if (posArray[i3] > 15) posArray[i3] = -15;
+  1108→      if (posArray[i3] < -15) posArray[i3] = 15;
+  1109→    }
+  1110→
+  1111→    positions.needsUpdate = true;
+  1112→  }
+  1113→
+  1114→  // ─── Phase 4 Rotation Animation ────────────────────────────────────────────
+  1115→
+  1116→  private updatePhase4Rotation(): void {
+  1117→    if (this.prefersReducedMotion) return;
+  1118→    if (this.currentPhase === 4 && this.commissionRotation > 0) {
+  1119→      // Smoothly approach target rotation
+  1120→      // (The target is set in applyPhaseState, GSAP handles the cam position)
+  1121→    }
+  1122→  }
+  1123→
+  1124→  // ─── Resize Handler ────────────────────────────────────────────────────────
+  1125→
+  1126→  private handleResize(): void {
+  1127→    if (this.disposed) return;
+  1128→    const width = this.container.clientWidth;
+  1129→    const height = this.container.clientHeight;
+  1130→    this.camera.aspect = width / height;
+  1131→    this.camera.updateProjectionMatrix();
+  1132→    this.renderer.setSize(width, height);
+  1133→  }
+  1134→
+  1135→  /** Public resize method — can be called externally */
+  1136→  resize(): void {
+  1137→    this.handleResize();
+  1138→  }
+  1139→
+  1140→  // ─── Disposal ──────────────────────────────────────────────────────────────
+  1141→
+  1142→  /** Clean up all resources. Call when the component unmounts. */
+  1143→  dispose(): void {
+  1144→    if (this.disposed) return;
+  1145→    this.disposed = true;
+  1146→
+  1147→    // Cancel animation frame
+  1148→    if (this.animFrameId) {
+  1149→      cancelAnimationFrame(this.animFrameId);
+  1150→    }
+  1151→
+  1152→    // Kill GSAP tweens
+  1153→    gsap.killTweensOf(this.camTargetPos);
+  1154→    gsap.killTweensOf(this.currentBgColor);
+  1155→    this.themeTween?.kill();
+  1156→
+  1157→    // Remove event listeners
+  1158→    window.removeEventListener('resize', this.handleResize);
+  1159→    window.removeEventListener('pointerdown', this.handleFirstInteraction);
+  1160→    window.removeEventListener('keydown', this.handleFirstInteraction);
+  1161→
+  1162→    // Dispose textures
+  1163→    for (const plane of this.galleryPlanes) {
+  1164→      if (plane.texture) plane.texture.dispose();
+  1165→      plane.material.dispose();
+  1166→      plane.mesh.geometry.dispose();
+  1167→    }
+  1168→
+  1169→    // Dispose glass panels
+  1170→    for (const panel of this.glassPanels) {
+  1171→      panel.material.dispose();
+  1172→      panel.mesh.geometry.dispose();
+  1173→      // Dispose label children
+  1174→      for (const child of panel.mesh.children) {
+  1175→        if (child instanceof THREE.Mesh) {
+  1176→          const mat = child.material as THREE.MeshBasicMaterial;
+  1177→          if (mat.map) mat.map.dispose();
+  1178→          mat.dispose();
+  1179→          child.geometry.dispose();
+  1180→        }
+  1181→      }
+  1182→    }
+  1183→
+  1184→    // Dispose wordmark glass
+  1185→    this.wordmarkGlassMaterial.dispose();
+  1186→    this.wordmarkGlass.geometry.dispose();
+  1187→
+  1188→    // Dispose background plane
+  1189→    this.bgPlaneMaterial.dispose();
+  1190→    this.bgPlane.geometry.dispose();
+  1191→
+  1192→    // Dispose particles
+  1193→    (this.particles.material as THREE.PointsMaterial).dispose();
+  1194→    this.particles.geometry.dispose();
+  1195→
+  1196→    // Dispose lights
+  1197→    this.lightLeft.dispose();
+  1198→    this.lightCenter.dispose();
+  1199→    this.lightRight.dispose();
+  1200→    this.ambientLight.dispose();
+  1201→
+  1202→    // Dispose renderer
+  1203→    this.renderer.dispose();
+  1204→
+  1205→    // Remove canvas from DOM
+  1206→    if (this.renderer.domElement.parentNode) {
+  1207→      this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
+  1208→    }
+  1209→
+  1210→    // Remove flash overlay
+  1211→    if (this.flashOverlay && this.flashOverlay.parentNode) {
+  1212→      this.flashOverlay.parentNode.removeChild(this.flashOverlay);
+  1213→    }
+  1214→
+  1215→    // Close audio context
+  1216→    if (this.audioCtx && this.audioCtx.state !== 'closed') {
+  1217→      this.audioCtx.close().catch(() => {});
+  1218→    }
+  1219→  }
+  1220→}
+  1221→
+  1222→// ─── Default Export ───────────────────────────────────────────────────────────
+  1223→
+  1224→export default VerisEngine;
