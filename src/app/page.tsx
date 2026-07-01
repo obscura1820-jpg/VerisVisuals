@@ -162,7 +162,7 @@ const GALLERY_CATEGORIES: GalleryCategory[] = [
     id: "weddings",
     label: "Weddings",
     subtitle: "Portrait & Ceremony",
-    footer: "4 Works",
+    footer: "8 Works",
     works: [
       {
         src: "/gallery/104A0939.jpg",
@@ -182,6 +182,26 @@ const GALLERY_CATEGORIES: GalleryCategory[] = [
       {
         src: "/gallery/104A0975.jpg",
         alt: "Bride placing a garland on the groom during a traditional Indian wedding ceremony",
+        span: "full",
+      },
+      {
+        src: "/gallery/104A1292.jpg",
+        alt: "Wedding couple in traditional attire sharing a candid moment in golden outdoor light",
+        span: "half",
+      },
+      {
+        src: "/gallery/104A1310.jpg",
+        alt: "Bride and groom framed by natural scenery during their outdoor wedding portrait session",
+        span: "half",
+      },
+      {
+        src: "/gallery/104A1312.jpg",
+        alt: "Intimate portrait of the wedding couple in traditional dress with warm sunlight",
+        span: "full",
+      },
+      {
+        src: "/gallery/104A1336.jpg",
+        alt: "Newlyweds walking together through an open landscape in their wedding finery",
         span: "full",
       },
     ],
