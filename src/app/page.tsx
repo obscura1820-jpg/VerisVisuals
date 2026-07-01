@@ -271,26 +271,18 @@ export default function Home() {
           </span>
         </div>
         <p className="veris-tagline">Photography beyond documentation.</p>
-        <div
-          style={{
-            position: "absolute",
-            bottom: "3rem",
-            left: "50%",
-            transform: "translateX(-50%)",
-            textAlign: "center",
-          }}
-        >
-          <div
-            className="font-ui"
-            style={{ fontSize: "0.55rem", opacity: 0.25 }}
-          >
-            Salim Shaikh
+        <div className="veris-hero-profile">
+          <div className="veris-profile-ring">
+            <img
+              src="/salim-shaikh.png"
+              alt="Salim Shaikh — Photographer, Mumbai"
+              className="veris-profile-img"
+              draggable={false}
+            />
           </div>
-          <div
-            className="font-ui"
-            style={{ fontSize: "0.5rem", opacity: 0.15, marginTop: "0.3rem" }}
-          >
-            Mumbai, India
+          <div className="veris-profile-info">
+            <span className="font-ui veris-profile-name">Salim Shaikh</span>
+            <span className="font-ui veris-profile-location">Mumbai, India</span>
           </div>
         </div>
       </div>

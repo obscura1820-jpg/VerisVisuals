@@ -218,6 +218,101 @@ body.veris-light .veris-wordmark .v-letter::after {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
+   HERO PROFILE
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.veris-hero-profile {
+  position: absolute;
+  bottom: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  animation: profileFadeIn 1.2s cubic-bezier(0.25, 1, 0.5, 1) 0.4s both;
+}
+
+@keyframes profileFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.veris-profile-ring {
+  width: clamp(56px, 10vw, 80px);
+  height: clamp(56px, 10vw, 80px);
+  border-radius: 50%;
+  padding: 1.5px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  transition: background var(--veris-transition-duration) ease;
+}
+
+body.veris-light .veris-profile-ring {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.15) 0%,
+    rgba(0, 0, 0, 0.04) 100%
+  );
+}
+
+.veris-profile-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  opacity: 0.85;
+  transition: opacity var(--veris-transition-duration) ease;
+}
+
+body.veris-light .veris-profile-img {
+  opacity: 0.9;
+}
+
+.veris-hero-profile:hover .veris-profile-img {
+  opacity: 1;
+}
+
+.veris-profile-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.veris-profile-name {
+  font-size: 0.55rem;
+  opacity: 0.35;
+  letter-spacing: 0.25em;
+  transition: opacity 600ms ease;
+}
+
+.veris-hero-profile:hover .veris-profile-name {
+  opacity: 0.6;
+}
+
+.veris-profile-location {
+  font-size: 0.5rem;
+  opacity: 0.15;
+  letter-spacing: 0.2em;
+  transition: opacity 600ms ease;
+}
+
+.veris-hero-profile:hover .veris-profile-location {
+  opacity: 0.35;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
    THEME TOGGLE
    ═══════════════════════════════════════════════════════════════════════════════ */
 

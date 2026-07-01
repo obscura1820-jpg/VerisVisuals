@@ -45,3 +45,26 @@ Stage Summary:
 - 0 ESLint errors, 0 warnings
 - Agent Browser verified: preloader exits correctly, hero section visible at opacity 1, theme toggle switches between Studio/Gallery, scroll transitions between sections, mobile responsive (390x844), no runtime JS errors
 - All PRD 2 core engine requirements met: event bus, adaptive performance, debug overlay, timeline FSM, modular architecture
+
+---
+Task ID: 3
+Agent: Main Coordinator
+Task: Add owner profile image (Salim Shaikh) to Hero section
+
+Work Log:
+- Copied uploaded profile image to /public/salim-shaikh.png as static asset
+- Replaced plain text "Salim Shaikh / Mumbai, India" in Hero section with structured profile component
+- Created `.veris-hero-profile` container with circular profile image inside a gradient ring
+- Added `profileFadeIn` animation (1.2s ease-out with 0.4s delay, slides up from 12px)
+- Ring uses `clamp(56px, 10vw, 80px)` for responsive sizing
+- Dark theme: white gradient ring border; Light theme: black gradient ring border
+- Hover interaction: image opacity rises to 1, name/location opacity increases
+- Image: 768×1365 natural, displayed as circular crop, 85% base opacity
+- Mobile (390px): ring clamps to 56px minimum, image 53px
+- Desktop (1280px): ring 80px, image 77px
+
+Stage Summary:
+- Files modified: page.tsx (hero section restructured), globals.css (6 new style rules + keyframe)
+- Static asset: /public/salim-shaikh.png
+- ESLint: 0 errors, 0 warnings
+- Browser verified: profile visible in both dark (Studio) and light (Gallery) themes, mobile responsive
