@@ -93,3 +93,29 @@ Stage Summary:
 - Mobile (390px): single column 358px, full-width hero + 4 stacked images
 - ESLint: 0 errors, 0 warnings
 - Browser verified: gallery renders correctly, lightbox opens/closes/navigates, mobile responsive, zero runtime errors
+
+---
+Task ID: 5
+Agent: Main Coordinator
+Task: Add Wedding portraits with category tab system
+
+Work Log:
+- Analyzed 4 wedding portrait images with VLM — all traditional Indian wedding photography
+- Copied to /public/gallery/: 104A0939, 104A0949, 104A0953, 104A0975.jpg (55-64MB total)
+- Refactored single COMMERCIAL_WORKS array into GALLERY_CATEGORIES structure with typed GalleryCategory interface
+- Added "Weddings" category: 4 works (2 full-width hero/closer + 2 half-width)
+- Built category tab UI: "COMMERCIAL" | "WEDDINGS" buttons with underline indicator, hover opacity transitions
+- Tab switch closes lightbox, resets gallery with key-based React remount for fade animation
+- Subtitle updates per category: "Product & Brand Photography" / "Portrait & Ceremony"
+- Footer shows dynamic count: "5 Works · JRL" / "4 Works"
+- Lightbox prev/next wrapped to current category length via derived state
+- Added CSS: .veris-gallery-tabs, .veris-gallery-tab, .veris-gallery-tab.active::after, .veris-gallery-subtitle, galleryFadeIn keyframe
+- Grid uses `key={activeCategory}` for clean re-mount on tab switch
+
+Stage Summary:
+- Files modified: page.tsx (full rewrite with tab system), globals.css (+55 lines tab/subtitle styles)
+- Static assets: 4 new images in /public/gallery/
+- Desktop Weddings: 1178px full-width hero + 588px 2×1 + 1178px full-width closer
+- Mobile Weddings: 358px single column, correct 4:3 and 3:2 ratios
+- ESLint: 0 errors, 0 warnings
+- Browser verified: tab switching, lightbox per-category navigation, mobile responsive, zero runtime errors

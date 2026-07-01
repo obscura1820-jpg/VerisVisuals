@@ -113,40 +113,80 @@ Cam: ${stats.camera.x.toFixed(2)}, ${stats.camera.y.toFixed(2)}, ${stats.camera.
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
-   MAIN PAGE COMPONENT — Milestone 1
-   ═══════════════════════════════════════════════════════════════════════════════ */
-
-/* ═══════════════════════════════════════════════════════════════════════════════
    GALLERY DATA
    ═══════════════════════════════════════════════════════════════════════════════ */
 
-const COMMERCIAL_WORKS = [
+type GalleryCategory = {
+  id: string;
+  label: string;
+  subtitle: string;
+  footer: string;
+  works: readonly { src: string; alt: string; span: "full" | "half" }[];
+};
+
+const GALLERY_CATEGORIES: GalleryCategory[] = [
   {
-    src: "/gallery/CH_F0033.jpg",
-    alt: "White JRL grooming tools arranged on a minimalist gray pedestal",
-    span: "full",
+    id: "commercial",
+    label: "Commercial",
+    subtitle: "Product & Brand Photography",
+    footer: "5 Works \u00b7 JRL",
+    works: [
+      {
+        src: "/gallery/CH_F0033.jpg",
+        alt: "White JRL grooming tools arranged on a minimalist gray pedestal",
+        span: "full",
+      },
+      {
+        src: "/gallery/CH_F0045.jpg",
+        alt: "JRL clippers and shaver on a white pedestal, soft gray background",
+        span: "half",
+      },
+      {
+        src: "/gallery/CH_F0045-1.png",
+        alt: "JRL grooming tools on light gray pedestal, warm beige background",
+        span: "half",
+      },
+      {
+        src: "/gallery/CH_F5208.jpg",
+        alt: "Two black JRL hair clippers on a matte black background",
+        span: "half",
+      },
+      {
+        src: "/gallery/CH_F6290.jpg",
+        alt: "Two sleek black hair dryers against a dark gradient background",
+        span: "half",
+      },
+    ],
   },
   {
-    src: "/gallery/CH_F0045.jpg",
-    alt: "JRL clippers and shaver on a white pedestal, soft gray background",
-    span: "half",
+    id: "weddings",
+    label: "Weddings",
+    subtitle: "Portrait & Ceremony",
+    footer: "4 Works",
+    works: [
+      {
+        src: "/gallery/104A0939.jpg",
+        alt: "Newlywed couple in traditional Indian attire embracing outdoors in soft golden light",
+        span: "full",
+      },
+      {
+        src: "/gallery/104A0949.jpg",
+        alt: "Wedding couple standing together in a sunlit open field with flowing veil",
+        span: "half",
+      },
+      {
+        src: "/gallery/104A0953.jpg",
+        alt: "Groom kissing the bride\u2019s cheek in a sunlit field with intimate embrace",
+        span: "half",
+      },
+      {
+        src: "/gallery/104A0975.jpg",
+        alt: "Bride placing a garland on the groom during a traditional Indian wedding ceremony",
+        span: "full",
+      },
+    ],
   },
-  {
-    src: "/gallery/CH_F0045-1.png",
-    alt: "JRL grooming tools on light gray pedestal, warm beige background",
-    span: "half",
-  },
-  {
-    src: "/gallery/CH_F5208.jpg",
-    alt: "Two black JRL hair clippers on a matte black background",
-    span: "half",
-  },
-  {
-    src: "/gallery/CH_F6290.jpg",
-    alt: "Two sleek black hair dryers against a dark gradient background",
-    span: "half",
-  },
-] as const;
+];
 
 /* ═══════════════════════════════════════════════════════════════════════════════
    LIGHTBOX
@@ -230,7 +270,7 @@ function Lightbox({
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
-   MAIN PAGE COMPONENT — Milestone 1
+   MAIN PAGE COMPONENT
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 export default function Home() {
@@ -243,6 +283,7 @@ export default function Home() {
   );
   const [isDark, setIsDark] = useState(true);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [activeCategory, setActiveCategory] = useState(GALLERY_CATEGORIES[0].id);
 
   /* ── Refs ───────────────────────────────────────────────────────────────────── */
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -334,24 +375,29 @@ export default function Home() {
   const showContact =
     preloaderComplete && currentSection === TimelineState.CONTACT;
 
+  /* ── Derived gallery state ─────────────────────────────────────────────────── */
+  const currentCategory = GALLERY_CATEGORIES.find((c) => c.id === activeCategory) ?? GALLERY_CATEGORIES[0];
+
   /* ── Lightbox controls ─────────────────────────────────────────────────────── */
   const closeLightbox = useCallback(() => setLightboxIndex(null), []);
   const prevImage = useCallback(
     () =>
       setLightboxIndex((i) =>
-        i !== null ? (i - 1 + COMMERCIAL_WORKS.length) % COMMERCIAL_WORKS.length : null,
+        i !== null
+          ? (i - 1 + currentCategory.works.length) % currentCategory.works.length
+          : null,
       ),
-    [],
+    [currentCategory.works.length],
   );
   const nextImage = useCallback(
     () =>
       setLightboxIndex((i) =>
-        i !== null ? (i + 1) % COMMERCIAL_WORKS.length : null,
+        i !== null
+          ? (i + 1) % currentCategory.works.length
+          : null,
       ),
-    [],
+    [currentCategory.works.length],
   );
-
-
 
   /* ═══════════════════════════════════════════════════════════════════════════════
      RENDER
@@ -424,7 +470,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Section: ARCHIVE — Commercial Gallery ────────────────────────────── */}
+      {/* ── Section: ARCHIVE — Gallery with Category Tabs ─────────────────── */}
       <div
         className="veris-phase-overlay veris-phase-overlay--gallery"
         style={{
@@ -432,19 +478,30 @@ export default function Home() {
           pointerEvents: showArchive ? "auto" : "none",
         }}
         role="region"
-        aria-label="Commercial Gallery"
+        aria-label="Gallery"
       >
         <header className="veris-gallery-header">
-          <div className="font-ui" style={{ fontSize: "0.55rem", opacity: 0.3, letterSpacing: "0.4em" }}>
-            Commercial
-          </div>
-          <div className="font-display" style={{ fontSize: "clamp(1rem, 2.5vw, 1.6rem)", opacity: 0.2, marginTop: "0.5rem" }}>
-            Product &amp; Brand Photography
+          <nav className="veris-gallery-tabs" aria-label="Gallery categories">
+            {GALLERY_CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                className={`veris-gallery-tab ${activeCategory === cat.id ? "active" : ""}`}
+                onClick={() => { setActiveCategory(cat.id); setLightboxIndex(null); }}
+                aria-pressed={activeCategory === cat.id}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </nav>
+          <div className="veris-gallery-subtitle">
+            <span className="font-display" style={{ fontSize: "clamp(1rem, 2.5vw, 1.6rem)", opacity: 0.2 }}>
+              {currentCategory.subtitle}
+            </span>
           </div>
         </header>
 
-        <div className="veris-gallery-grid">
-          {COMMERCIAL_WORKS.map((work, i) => (
+        <div className="veris-gallery-grid" key={activeCategory}>
+          {currentCategory.works.map((work, i) => (
             <button
               key={work.src}
               className={`veris-gallery-item ${work.span === "full" ? "veris-gallery-item--full" : ""}`}
@@ -468,7 +525,7 @@ export default function Home() {
 
         <div className="veris-gallery-footer">
           <span className="font-ui" style={{ fontSize: "0.5rem", opacity: 0.15, letterSpacing: "0.3em" }}>
-            {COMMERCIAL_WORKS.length} Works &middot; JRL
+            {currentCategory.footer}
           </span>
         </div>
       </div>
@@ -476,7 +533,7 @@ export default function Home() {
       {/* ── Lightbox ─────────────────────────────────────────────────────────── */}
       {showArchive && lightboxIndex !== null && (
         <Lightbox
-          images={COMMERCIAL_WORKS}
+          images={currentCategory.works}
           index={lightboxIndex}
           onClose={closeLightbox}
           onPrev={prevImage}

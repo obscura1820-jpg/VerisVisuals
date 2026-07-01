@@ -426,7 +426,62 @@ body.veris-light .veris-profile-img {
 .veris-gallery-header {
   flex-shrink: 0;
   text-align: center;
-  padding: clamp(4rem, 12vh, 8rem) 2rem 2rem;
+  padding: clamp(4rem, 12vh, 8rem) 2rem 1.5rem;
+}
+
+/* ── Gallery Tabs ──────────────────────────────────────────────────────────── */
+
+.veris-gallery-tabs {
+  display: inline-flex;
+  gap: 0;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+}
+
+.veris-gallery-tab {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.55rem;
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  background: none;
+  border: none;
+  color: var(--veris-fg);
+  opacity: 0.25;
+  cursor: pointer;
+  padding: 0.6rem 1.2rem;
+  transition: opacity 500ms ease;
+  position: relative;
+}
+
+.veris-gallery-tab:hover {
+  opacity: 0.5;
+}
+
+.veris-gallery-tab.active {
+  opacity: 0.6;
+}
+
+.veris-gallery-tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 1.2rem;
+  right: 1.2rem;
+  height: 1px;
+  background: var(--veris-fg);
+  opacity: 0.5;
+}
+
+/* ── Gallery Subtitle ──────────────────────────────────────────────────────── */
+
+.veris-gallery-subtitle {
+  animation: galleryFadeIn 500ms ease both;
+}
+
+@keyframes galleryFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .veris-gallery-grid {
