@@ -209,6 +209,15 @@ export class VerisApp {
     if (this.disposed) return;
     this.lastTime = now();
     this.animate();
+
+    // Enable scroll input after the preloader has fully faded.
+    // React preloader flow: 300ms delay + 1400ms CSS animation = 1700ms.
+    // We add a 300ms buffer for safety.
+    setTimeout(() => {
+      if (!this.disposed) {
+        this.scrollController.enable();
+      }
+    }, 2000);
   }
 
   /** Stop the render loop. */

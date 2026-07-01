@@ -119,3 +119,39 @@ Stage Summary:
 - Mobile Weddings: 358px single column, correct 4:3 and 3:2 ratios
 - ESLint: 0 errors, 0 warnings
 - Browser verified: tab switching, lightbox per-category navigation, mobile responsive, zero runtime errors
+
+---
+Task ID: 6
+Agent: Main Coordinator
+Task: Fix mobile scrolling — add touch event support to ScrollController
+
+Work Log:
+- Diagnosed root cause: ScrollController only listened for `wheel` events, which don't fire on touch/mobile devices
+- Rewrote scroll.ts (~320 lines) with full touch support:
+  - touchstart/touchmove/touchend/touchcancel event listeners on window
+  - Single-finger swipe detection with multi-touch (pinch/zoom) rejection
+  - Touch sensitivity multiplier (6x) to compensate for shorter mobile swipe distances vs mouse wheel
+  - Momentum/inertia system using velocity ring buffer (5 samples) with 0.93 decay per frame
+  - Gallery-aware conflict resolution: checks if touch target is inside `.veris-phase-overlay--gallery`
+  - When gallery can scroll internally → lets native scroll handle it (no preventDefault)
+  - When gallery is at boundary → hijacks for virtual section scrolling
+  - `lastTouchWasGalleryInternal` flag suppresses momentum after gallery-internal touches
+  - Mixed case handled: flag resets when gallery boundary is hit during a gesture
+- Added `enabled` flag to ScrollController — all input ignored until `enable()` called
+- app.ts: `scrollController.enable()` called 2s after `start()` (matches preloader 1.7s fade + 300ms buffer)
+- CSS additions:
+  - `touch-action: none` on `.veris-phase-overlay` (prevents browser default gestures)
+  - `touch-action: pan-y` + `-webkit-overflow-scrolling: touch` on `.veris-phase-overlay--gallery` (allows native gallery scroll)
+  - `touch-action: none` on `.veris-preloader` (prevents gestures during loading)
+  - `overscroll-behavior: none` on body (prevents pull-to-refresh, overscroll bounce)
+
+Stage Summary:
+- Files modified: scroll.ts (full rewrite, 117→320 lines), app.ts (+10 lines enable timeout), globals.css (+5 CSS properties)
+- Mobile verification (iPhone 14 viewport, 390×844):
+  - Hero → Archive: ✓ (swipe down)
+  - Archive → Detail: ✓ (swipe down)
+  - Detail → Contact: ✓ (swipe down)
+  - Contact → Detail → Archive → Hero: ✓ (3x swipe up)
+  - Gallery internal touch: ✓ (no unwanted section navigation)
+  - Desktop wheel scroll: ✓ (unchanged, Hero → Archive verified)
+- ESLint: 0 errors, 0 warnings
