@@ -86,7 +86,7 @@ export class VerisScene {
     this.particleMaterial = new THREE.PointsMaterial({
       size: PARTICLES.size,
       sizeAttenuation: PARTICLES.sizeAttenuation,
-      blending: PARTICLES.blending as THREE.Blending,
+      blending: THREE.AdditiveBlending,
       depthWrite: PARTICLES.depthWrite,
       transparent: true,
       opacity: PARTICLES.opacity,

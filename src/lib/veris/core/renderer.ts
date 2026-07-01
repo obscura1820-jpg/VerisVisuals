@@ -9,8 +9,7 @@
 
 import * as THREE from 'three';
 import { RENDERER, SCENE } from './config';
-import { EventBus } from './event-bus';
-import { VerisEvent } from './event-bus';
+import { type EventBus, VerisEvent } from './event-bus';
 
 /**
  * Manages the Three.js WebGL renderer lifecycle.
@@ -44,15 +43,13 @@ export class VerisRenderer {
     });
 
     this.renderer.setPixelRatio(this.pixelRatio);
-    this.renderer.toneMapping = RENDERER.toneMapping as THREE.ToneMapping;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = RENDERER.exposure;
-    this.renderer.outputColorSpace =
-      RENDERER.outputColorSpace as THREE.ColorSpace;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     if (RENDERER.shadowMap) {
       this.renderer.shadowMap.enabled = true;
-      this.renderer.shadowMap.type =
-        RENDERER.shadowMapType as THREE.ShadowMapType;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     }
 
     this.renderer.setClearColor(SCENE.background);

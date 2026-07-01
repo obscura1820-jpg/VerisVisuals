@@ -4,11 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { VerisApp } from "@/lib/veris/core/app";
 import { VerisEvent } from "@/lib/veris/core/event-bus";
 import { TimelineState } from "@/lib/veris/core/timeline";
-import { easeInOutQuart } from "@/lib/veris/core/utils";
+import { DEBUG } from "@/lib/veris/core/config";
 
 /* ═══════════════════════════════════════════════════════════════════════════════
    ODOMETER COUNTER
-   Each digit eases individually — PRD requirement.
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 function OdometerDigit({ digit }: { digit: number }) {
@@ -27,16 +26,16 @@ function OdometerDigit({ digit }: { digit: number }) {
 }
 
 function OdometerCounter({ value }: { value: number }) {
-  const clamped = Math.max(0, Math.min(100, Math.round(value)));
-  const hundreds = Math.floor(clamped / 100);
-  const tens = Math.floor((clamped % 100) / 10);
-  const ones = clamped % 10;
+  const pct = Math.max(0, Math.min(100, Math.round(value * 100)));
+  const hundreds = Math.floor(pct / 100);
+  const tens = Math.floor((pct % 100) / 10);
+  const ones = pct % 10;
 
   return (
     <span
       className="font-display inline-flex items-baseline"
       style={{ fontSize: "clamp(2rem, 6vw, 5rem)" }}
-      aria-label={`${clamped}%`}
+      aria-label={`${pct}%`}
       role="status"
     >
       <OdometerDigit digit={hundreds} />
@@ -59,9 +58,62 @@ function OdometerCounter({ value }: { value: number }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
+   DEBUG OVERLAY — PRD 2 requirement
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+function DebugOverlay({ appRef }: { appRef: React.RefObject<VerisApp | null> }) {
+  const [stats, setStats] = useState<{
+    fps: number;
+    drawCalls: number;
+    triangles: number;
+    memory: { geometry: number; textures: number };
+    qualityLevel: number;
+    camera: { x: number; y: number; z: number };
+  } | null>(null);
+
+  useEffect(() => {
+    if (!DEBUG) return;
+    const interval = setInterval(() => {
+      if (appRef.current) {
+        setStats(appRef.current.getPerformanceStats());
+      }
+    }, 250);
+    return () => clearInterval(interval);
+  }, [appRef]);
+
+  if (!DEBUG || !stats) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: "0.75rem",
+        left: "0.75rem",
+        zIndex: 200,
+        fontFamily: "monospace",
+        fontSize: "0.6rem",
+        lineHeight: 1.6,
+        color: "#00ff88",
+        background: "rgba(0,0,0,0.6)",
+        padding: "0.5rem 0.75rem",
+        borderRadius: "4px",
+        pointerEvents: "none",
+        whiteSpace: "pre",
+        opacity: 0.85,
+      }}
+    >
+      {`FPS: ${stats.fps}
+Draw: ${stats.drawCalls}
+Tris: ${stats.triangles.toLocaleString()}
+Geo: ${stats.memory.geometry}  Tex: ${stats.memory.textures}
+Quality: ${stats.qualityLevel}
+Cam: ${stats.camera.x.toFixed(2)}, ${stats.camera.y.toFixed(2)}, ${stats.camera.z.toFixed(2)}`}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
    MAIN PAGE COMPONENT — Milestone 1
-   Preloader + immersive environment.
-   No gallery. No contact form. Empty timeline sections.
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 export default function Home() {
@@ -78,8 +130,10 @@ export default function Home() {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<VerisApp | null>(null);
 
-  /* ── Initialize the engine ──────────────────────────────────────────────────── */
+  /* ── Initialize the engine + subscribe to events atomically ──────────────────── */
   useEffect(() => {
+    document.body.classList.add("no-scroll");
+
     const container = canvasContainerRef.current;
     if (!container) return;
 
@@ -87,6 +141,42 @@ export default function Home() {
     const app = new VerisApp(container);
     appRef.current = app;
 
+    // Subscribe BEFORE init so we don't miss any events
+    const bus = app.getEventBus();
+
+    const unsubProgress = bus.on(VerisEvent.LoadProgress, (payload: unknown) => {
+      const { progress } = payload as { progress: number };
+      if (mounted) setLoadProgress(progress);
+    });
+
+    const unsubLoaded = bus.on(VerisEvent.AssetsLoaded, () => {
+      if (!mounted) return;
+      setTimeout(() => {
+        if (!mounted) return;
+        setPreloaderExiting(true);
+        setTimeout(() => {
+          if (!mounted) return;
+          setPreloaderComplete(true);
+          document.body.classList.remove("no-scroll");
+        }, 1400);
+      }, 300);
+    });
+
+    const unsubSection = bus.on(
+      VerisEvent.SectionChanged,
+      (payload: unknown) => {
+        const { to } = payload as { from: string; to: string };
+        if (mounted) setCurrentSection(to);
+      },
+    );
+
+    const unsubTheme = bus.on(VerisEvent.ThemeChanged, () => {
+      if (mounted) {
+        try { setIsDark(app.getThemeManager().isDark()); } catch { /* not yet init'd */ }
+      }
+    });
+
+    // Now initialize and start
     app
       .init()
       .then(() => {
@@ -99,54 +189,12 @@ export default function Home() {
 
     return () => {
       mounted = false;
-      app.dispose();
-      appRef.current = null;
-    };
-  }, []);
-
-  /* ── Subscribe to engine events ─────────────────────────────────────────────── */
-  useEffect(() => {
-    const app = appRef.current;
-    if (!app) return;
-
-    const bus = app.getEventBus();
-
-    /* Loading progress from asset manager */
-    const unsubProgress = bus.on(VerisEvent.LoadProgress, (payload: unknown) => {
-      const { progress } = payload as { progress: number };
-      setLoadProgress(progress);
-    });
-
-    /* Assets loaded → trigger preloader exit */
-    const unsubLoaded = bus.on(VerisEvent.AssetsLoaded, () => {
-      setTimeout(() => {
-        setPreloaderExiting(true);
-        setTimeout(() => {
-          setPreloaderComplete(true);
-          document.body.classList.remove("no-scroll");
-        }, 1400);
-      }, 300);
-    });
-
-    /* Section changes from timeline */
-    const unsubSection = bus.on(
-      VerisEvent.SectionChanged,
-      (payload: unknown) => {
-        const { to } = payload as { from: string; to: string };
-        setCurrentSection(to);
-      },
-    );
-
-    /* Theme changes */
-    const unsubTheme = bus.on(VerisEvent.ThemeChanged, () => {
-      setIsDark(app.getThemeManager().isDark());
-    });
-
-    return () => {
       unsubProgress();
       unsubLoaded();
       unsubSection();
       unsubTheme();
+      app.dispose();
+      appRef.current = null;
     };
   }, []);
 
@@ -180,11 +228,14 @@ export default function Home() {
         aria-hidden="true"
       />
 
+      {/* ── Debug Overlay (visible only when DEBUG=true in config) ──────────── */}
+      <DebugOverlay appRef={appRef} />
+
       {/* ── Preloader Overlay ─────────────────────────────────────────────────── */}
       <div
         className={`veris-preloader ${preloaderExiting ? "v-entering" : ""}`}
         role="progressbar"
-        aria-valuenow={loadProgress}
+        aria-valuenow={Math.round(loadProgress * 100)}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label="Loading experience"
@@ -202,17 +253,6 @@ export default function Home() {
         </div>
         <OdometerCounter value={loadProgress} />
       </div>
-
-      {/* ── Scroll Container (drives timeline via wheel events) ──────────────── */}
-      <div
-        style={{
-          position: "relative",
-          height: preloaderComplete ? "500vh" : "100vh",
-          zIndex: 1,
-          pointerEvents: "none",
-        }}
-        aria-hidden="true"
-      />
 
       {/* ── Section: HERO ─────────────────────────────────────────────────────── */}
       <div
@@ -355,6 +395,25 @@ export default function Home() {
         <div className="veris-scroll-hint visible" aria-hidden="true">
           Scroll to explore
         </div>
+      )}
+
+      {/* ── Section Navigation Dots ───────────────────────────────────────────── */}
+      {preloaderComplete && (
+        <nav className="veris-nav-dots" aria-label="Section navigation">
+          {[
+            { state: TimelineState.HERO, label: "Hero" },
+            { state: TimelineState.ARCHIVE, label: "Archive" },
+            { state: TimelineState.DETAIL, label: "Works" },
+            { state: TimelineState.CONTACT, label: "Commission" },
+          ].map(({ state, label }) => (
+            <button
+              key={state}
+              className={`veris-nav-dot ${currentSection === state ? "active" : ""}`}
+              aria-label={label}
+              aria-current={currentSection === state ? "true" : undefined}
+            />
+          ))}
+        </nav>
       )}
     </>
   );

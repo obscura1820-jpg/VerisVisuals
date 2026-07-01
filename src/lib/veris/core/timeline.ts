@@ -3,8 +3,14 @@
  * ===================================
  * Finite state machine that controls the experience sections.
  * Order: PRELOADER → HERO → ARCHIVE → DETAIL → CONTACT
- * Scroll progress (0–1) maps to progress within the current section.
- * Transitions between sections are animated via GSAP.
+ *
+ * Scroll progress (0–1) maps to sections as equal segments:
+ *   0.00–0.25 = HERO
+ *   0.25–0.50 = ARCHIVE
+ *   0.50–0.75 = DETAIL
+ *   0.75–1.00 = CONTACT
+ *
+ * Transitions between sections emit `SectionChanged` events.
  *
  * @module timeline
  */
@@ -21,16 +27,15 @@ export enum TimelineState {
   CONTACT = 'CONTACT',
 }
 
-/** Canonical order of states. */
-const STATE_ORDER: TimelineState[] = [
-  TimelineState.PRELOADER,
+/** Canonical order of scrollable states (PRELOADER excluded). */
+const SCROLLABLE_STATES: TimelineState[] = [
   TimelineState.HERO,
   TimelineState.ARCHIVE,
   TimelineState.DETAIL,
   TimelineState.CONTACT,
 ];
 
-/** GSAP transition duration in seconds. */
+/** GSAP transition duration in seconds for camera/scene moves. */
 const TRANSITION_DURATION = 1.2;
 
 export class TimelineManager {
@@ -39,31 +44,21 @@ export class TimelineManager {
   /** Current active state. */
   private currentState: TimelineState = TimelineState.PRELOADER;
 
-  /** Internal progress value, animated by GSAP for smooth transitions. */
-  private progressValue = { value: 0 };
-
   /** Whether a GSAP transition is currently running. */
   private transitioning = false;
-
-  /** Unsubscribe handle for scroll events. */
-  private unsubScroll: (() => void) | null = null;
 
   constructor(eventBus: EventBus) {
     this.eventBus = eventBus;
   }
 
-  /** Initialize the timeline and subscribe to scroll updates. */
+  /** Initialize the timeline. */
   init(): void {
-    this.unsubScroll = this.eventBus.on(VerisEvent.ScrollUpdate, (payload: unknown) => {
-      const { value } = payload as { value: number };
-      this.setProgress(value);
-    });
+    // No scroll subscription needed — app.ts calls setGlobalScroll directly
   }
 
   /**
-   * Transition to a specific state.
+   * Force-transition to a specific state (used by assetsLoaded → HERO).
    * Emits `SectionChanged` with `{ from, to }`.
-   * No-op if already in the target state.
    */
   goto(state: TimelineState): void {
     if (state === this.currentState || this.transitioning) return;
@@ -73,33 +68,26 @@ export class TimelineManager {
 
     this.transitioning = true;
 
-    // Reset progress for the new state
-    gsap.to(this.progressValue, {
-      value: 0,
-      duration: TRANSITION_DURATION * 0.4,
-      ease: 'power2.inOut',
-      onComplete: () => {
-        this.currentState = to;
-        this.progressValue.value = 0;
-        this.eventBus.emit(VerisEvent.SectionChanged, { from, to });
-        this.transitioning = false;
-      },
+    gsap.delayedCall(0.05, () => {
+      this.currentState = to;
+      this.transitioning = false;
+      this.eventBus.emit(VerisEvent.SectionChanged, { from, to });
     });
   }
 
   /** Advance to the next state in sequence. */
   next(): void {
-    const idx = STATE_ORDER.indexOf(this.currentState);
-    if (idx < STATE_ORDER.length - 1) {
-      this.goto(STATE_ORDER[idx + 1]);
+    const idx = SCROLLABLE_STATES.indexOf(this.currentState);
+    if (idx < SCROLLABLE_STATES.length - 1) {
+      this.goto(SCROLLABLE_STATES[idx + 1]);
     }
   }
 
   /** Go back to the previous state in sequence. */
   previous(): void {
-    const idx = STATE_ORDER.indexOf(this.currentState);
+    const idx = SCROLLABLE_STATES.indexOf(this.currentState);
     if (idx > 0) {
-      this.goto(STATE_ORDER[idx - 1]);
+      this.goto(SCROLLABLE_STATES[idx - 1]);
     }
   }
 
@@ -108,42 +96,49 @@ export class TimelineManager {
     return this.currentState;
   }
 
-  /** Get the current progress within the active state (0–1). */
+  /**
+   * Get the current progress within the active state (0–1).
+   * Computed from the global scroll value.
+   */
   getProgress(): number {
-    return this.progressValue.value;
+    return this._lastSectionProgress;
   }
 
   /**
-   * Set progress within the current state (0–1).
-   * Called by the scroll controller.
-   * If progress exceeds 0.95, automatically advances to the next state.
+   * Map a global scroll value (0–1) to the correct section and emit transitions.
+   * Called every frame from app.ts.
+   *
+   * @param globalScroll - Normalized scroll position across the entire page [0, 1].
    */
-  setProgress(p: number): void {
+  setGlobalScroll(globalScroll: number): void {
+    if (this.currentState === TimelineState.PRELOADER) return;
     if (this.transitioning) return;
 
-    // Clamp
-    const clamped = p < 0 ? 0 : p > 1 ? 1 : p;
+    const clamped = globalScroll < 0 ? 0 : globalScroll > 1 ? 1 : globalScroll;
+    const numSections = SCROLLABLE_STATES.length;
+    const sectionFloat = clamped * numSections;
+    const sectionIndex = Math.min(Math.floor(sectionFloat), numSections - 1);
+    const sectionProgress = sectionFloat - sectionIndex;
 
-    this.progressValue.value = clamped;
+    // Store for getProgress()
+    this._lastSectionProgress = sectionProgress;
 
-    // Auto-advance when near end of section
-    if (clamped >= 0.95) {
-      const idx = STATE_ORDER.indexOf(this.currentState);
-      if (idx < STATE_ORDER.length - 1) {
-        this.next();
-      }
+    const targetState = SCROLLABLE_STATES[sectionIndex];
+
+    if (targetState !== this.currentState) {
+      const from = this.currentState;
+      this.currentState = targetState;
+      this.eventBus.emit(VerisEvent.SectionChanged, { from, to: targetState });
     }
   }
 
-  /** Unsubscribe from events and reset state. */
+  /** Unsubscribe and reset state. */
   dispose(): void {
-    if (this.unsubScroll) {
-      this.unsubScroll();
-      this.unsubScroll = null;
-    }
-    gsap.killTweensOf(this.progressValue);
+    gsap.killTweensOf(this);
     this.currentState = TimelineState.PRELOADER;
-    this.progressValue.value = 0;
     this.transitioning = false;
+    this._lastSectionProgress = 0;
   }
+
+  private _lastSectionProgress = 0;
 }

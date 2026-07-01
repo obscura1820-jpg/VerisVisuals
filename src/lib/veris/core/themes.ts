@@ -3,8 +3,7 @@
  * ================================
  * Manages two themes: Studio Ambient (dark) and Gallery Day (light).
  * Smooth transitions via GSAP tween over the configured duration.
- * Provides interpolated values for any theme property at time t (0–1).
- * Uses THREE.Color for color interpolation.
+ * Uses a proxy object for tweening — GSAP cannot tween THREE.Color directly.
  *
  * @module themes
  */
@@ -18,11 +17,22 @@ import { clamp01 } from './utils';
 /** Theme name type. */
 type ThemeName = 'studio' | 'gallery';
 
-/** Internal interpolation state — tweened by GSAP. */
+/** Internal interpolation state. */
 interface ThemeLerpState {
   background: THREE.Color;
   foreground: THREE.Color;
   fogColor: THREE.Color;
+  glassRoughness: number;
+  exposure: number;
+  lightIntensityMultiplier: number;
+  bloomStrength: number;
+}
+
+/** Numeric proxy for GSAP to tween. THREE.Color is not GSAP-tweenable directly. */
+interface ThemeTweenProxy {
+  bgR: number; bgG: number; bgB: number;
+  fgR: number; fgG: number; fgB: number;
+  fogR: number; fogG: number; fogB: number;
   glassRoughness: number;
   exposure: number;
   lightIntensityMultiplier: number;
@@ -35,12 +45,11 @@ export class ThemeManager {
   /** Current theme name. */
   private currentIsDark: boolean;
 
-  /** Tweened interpolation state. */
+  /** Tweened interpolation state (what consumers read). */
   private lerpState: ThemeLerpState;
 
-  /** Source snapshot for manual interpolation. */
-  private fromSnapshot: ThemeLerpState;
-  private toSnapshot: ThemeLerpState;
+  /** GSAP-tweenable numeric proxy. Updated each frame via onUpdate. */
+  private tweenProxy: ThemeTweenProxy;
 
   /** Whether a GSAP transition is active. */
   private transitioning = false;
@@ -49,7 +58,6 @@ export class ThemeManager {
     this.eventBus = eventBus;
     this.currentIsDark = true;
 
-    // Initialize lerp state from studio (dark) theme
     const studio = THEMES.studio;
     this.lerpState = {
       background: new THREE.Color(studio.background),
@@ -61,8 +69,7 @@ export class ThemeManager {
       bloomStrength: studio.bloomStrength,
     };
 
-    this.fromSnapshot = this.cloneState(this.lerpState);
-    this.toSnapshot = this.cloneState(this.lerpState);
+    this.tweenProxy = this.stateToProxy(this.lerpState);
   }
 
   /**
@@ -73,8 +80,7 @@ export class ThemeManager {
     this.currentIsDark = currentIsDark;
     const theme = currentIsDark ? THEMES.studio : THEMES.gallery;
     this.applyThemeToState(theme, this.lerpState);
-    this.fromSnapshot = this.cloneState(this.lerpState);
-    this.toSnapshot = this.cloneState(this.lerpState);
+    this.tweenProxy = this.stateToProxy(this.lerpState);
   }
 
   /** Toggle between dark and light themes. */
@@ -85,7 +91,7 @@ export class ThemeManager {
   /**
    * Set theme explicitly.
    * Triggers a GSAP tween over `THEMES.transitionDuration` ms.
-   * Emits `ThemeChanged` when complete.
+   * Emits `ThemeChanged` on every onUpdate frame (not just onComplete).
    */
   setTheme(isDark: boolean): void {
     if (isDark === this.currentIsDark && !this.transitioning) return;
@@ -93,26 +99,37 @@ export class ThemeManager {
     this.currentIsDark = isDark;
     const targetTheme = isDark ? THEMES.studio : THEMES.gallery;
 
-    // Capture current state as "from"
-    this.fromSnapshot = this.cloneState(this.lerpState);
-    this.applyThemeToState(targetTheme, this.toSnapshot);
+    // Capture target as numeric proxy
+    const targetProxy = {
+      bgR: ((targetTheme.background >> 16) & 0xff) / 255,
+      bgG: ((targetTheme.background >> 8) & 0xff) / 255,
+      bgB: (targetTheme.background & 0xff) / 255,
+      fgR: ((targetTheme.foreground >> 16) & 0xff) / 255,
+      fgG: ((targetTheme.foreground >> 8) & 0xff) / 255,
+      fgB: (targetTheme.foreground & 0xff) / 255,
+      fogR: ((targetTheme.fogColor >> 16) & 0xff) / 255,
+      fogG: ((targetTheme.fogColor >> 8) & 0xff) / 255,
+      fogB: (targetTheme.fogColor & 0xff) / 255,
+      glassRoughness: targetTheme.glassRoughness,
+      exposure: targetTheme.exposure,
+      lightIntensityMultiplier: targetTheme.lightIntensityMultiplier,
+      bloomStrength: targetTheme.bloomStrength,
+    };
 
     this.transitioning = true;
 
-    gsap.to(this.lerpState, {
-      ...this.toSnapshot,
-      // GSAP can't tween THREE.Color directly with dot access, so we
-      // use a proxy object and apply it each frame.
+    gsap.to(this.tweenProxy, {
+      ...targetProxy,
       duration: THEMES.transitionDuration / 1000,
       ease: 'power2.inOut',
       onUpdate: () => {
-        // Apply the proxy values to actual state
-      },
-      onComplete: () => {
-        this.transitioning = false;
+        this.proxyToState(this.tweenProxy, this.lerpState);
         this.eventBus.emit(VerisEvent.ThemeChanged, {
           theme: isDark ? 'studio' : 'gallery',
         });
+      },
+      onComplete: () => {
+        this.transitioning = false;
       },
     });
   }
@@ -129,37 +146,36 @@ export class ThemeManager {
 
   /**
    * Get an interpolated value for a theme property at time t (0–1).
-   * Useful for custom animations that need theme-aware values.
-   *
-   * Supported properties: 'background', 'fogColor', 'exposure',
-   * 'glassRoughness', 'lightIntensityMultiplier', 'bloomStrength'
-   *
    * For color properties, returns the hex number.
    * For numeric properties, returns the number.
    */
   getInterpolatedValue(property: string, t: number): number {
     const ct = clamp01(t);
-    const from = this.fromSnapshot;
-    const to = this.toSnapshot;
+    const currentTheme = this.currentIsDark ? THEMES.studio : THEMES.gallery;
+    const otherTheme = this.currentIsDark ? THEMES.gallery : THEMES.studio;
 
     switch (property) {
       case 'background': {
-        const c = new THREE.Color().copy(from.background).lerp(to.background, ct);
+        const c = new THREE.Color(currentTheme.background).lerp(
+          new THREE.Color(otherTheme.background), ct,
+        );
         return c.getHex();
       }
       case 'fogColor': {
-        const c = new THREE.Color().copy(from.fogColor).lerp(to.fogColor, ct);
+        const c = new THREE.Color(currentTheme.fogColor).lerp(
+          new THREE.Color(otherTheme.fogColor), ct,
+        );
         return c.getHex();
       }
       case 'exposure':
-        return from.exposure + (to.exposure - from.exposure) * ct;
+        return currentTheme.exposure + (otherTheme.exposure - currentTheme.exposure) * ct;
       case 'glassRoughness':
-        return from.glassRoughness + (to.glassRoughness - from.glassRoughness) * ct;
+        return currentTheme.glassRoughness + (otherTheme.glassRoughness - currentTheme.glassRoughness) * ct;
       case 'lightIntensityMultiplier':
-        return from.lightIntensityMultiplier +
-          (to.lightIntensityMultiplier - from.lightIntensityMultiplier) * ct;
+        return currentTheme.lightIntensityMultiplier +
+          (otherTheme.lightIntensityMultiplier - currentTheme.lightIntensityMultiplier) * ct;
       case 'bloomStrength':
-        return from.bloomStrength + (to.bloomStrength - from.bloomStrength) * ct;
+        return currentTheme.bloomStrength + (otherTheme.bloomStrength - currentTheme.bloomStrength) * ct;
       default:
         return 0;
     }
@@ -172,7 +188,7 @@ export class ThemeManager {
 
   /** Kill GSAP tweens and reset. */
   dispose(): void {
-    gsap.killTweensOf(this.lerpState);
+    gsap.killTweensOf(this.tweenProxy);
     this.transitioning = false;
   }
 
@@ -192,16 +208,33 @@ export class ThemeManager {
     state.bloomStrength = theme.bloomStrength;
   }
 
-  /** Deep clone a ThemeLerpState (cloning THREE.Color instances). */
-  private cloneState(state: ThemeLerpState): ThemeLerpState {
+  /** Convert ThemeLerpState to a GSAP-tweenable numeric proxy. */
+  private stateToProxy(state: ThemeLerpState): ThemeTweenProxy {
     return {
-      background: new THREE.Color().copy(state.background),
-      foreground: new THREE.Color().copy(state.foreground),
-      fogColor: new THREE.Color().copy(state.fogColor),
+      bgR: state.background.r,
+      bgG: state.background.g,
+      bgB: state.background.b,
+      fgR: state.foreground.r,
+      fgG: state.foreground.g,
+      fgB: state.foreground.b,
+      fogR: state.fogColor.r,
+      fogG: state.fogColor.g,
+      fogB: state.fogColor.b,
       glassRoughness: state.glassRoughness,
       exposure: state.exposure,
       lightIntensityMultiplier: state.lightIntensityMultiplier,
       bloomStrength: state.bloomStrength,
     };
+  }
+
+  /** Write proxy numeric values back to the ThemeLerpState's THREE.Colors and numbers. */
+  private proxyToState(proxy: ThemeTweenProxy, state: ThemeLerpState): void {
+    state.background.setRGB(proxy.bgR, proxy.bgG, proxy.bgB);
+    state.foreground.setRGB(proxy.fgR, proxy.fgG, proxy.fgB);
+    state.fogColor.setRGB(proxy.fogR, proxy.fogG, proxy.fogB);
+    state.glassRoughness = proxy.glassRoughness;
+    state.exposure = proxy.exposure;
+    state.lightIntensityMultiplier = proxy.lightIntensityMultiplier;
+    state.bloomStrength = proxy.bloomStrength;
   }
 }

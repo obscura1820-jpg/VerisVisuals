@@ -25,17 +25,17 @@
 
 import * as THREE from 'three';
 import { EventBus, VerisEvent } from './event-bus';
-import { CAMERA, SCENE, RENDERER } from './config';
+import { CAMERA, SCENE, RENDERER, GLASS_MATERIAL } from './config';
 import { now } from './utils';
 
-// Core 3D modules (built by parallel agent)
+// Core 3D modules
 import { VerisRenderer } from './renderer';
 import { VerisScene } from './scene';
 import { VerisCamera } from './camera';
 import { VerisLights } from './lights';
 import { VerisMaterials } from './materials';
 
-// System modules (this task)
+// System modules
 import { AssetManager } from './loader';
 import { MouseController } from './controls';
 import { ScrollController } from './scroll';
@@ -46,7 +46,6 @@ import { PerformanceMonitor } from './performance';
 
 /* ─── Camera Targets per Section ────────────────────────────────────────────── */
 
-/** Camera position/lookAt targets for each timeline state. */
 const SECTION_CAMERA_TARGETS: Record<
   string,
   { position: { x: number; y: number; z: number }; lookAt: { x: number; y: number; z: number } }
@@ -103,8 +102,14 @@ export class VerisApp {
   private unsubs: Array<() => void> = [];
   private audioInitBound = false;
 
+  /* ─── Glass panels (hero visual) ──────────────────────────────────────────── */
+
+  private glassPanels: THREE.Mesh[] = [];
+
   constructor(container: HTMLElement) {
     this.container = container;
+    // Create EventBus immediately so consumers can subscribe before init()
+    this.eventBus = new EventBus();
   }
 
   /**
@@ -113,8 +118,8 @@ export class VerisApp {
    * @returns Resolves when assets are loaded and the scene is ready.
    */
   async init(): Promise<void> {
-    // 1. EventBus — no dependencies
-    this.eventBus = new EventBus();
+    // 1. EventBus — already created in constructor
+    // this.eventBus is available
 
     // 2. Renderer
     this.renderer = new VerisRenderer(this.container, this.eventBus);
@@ -141,36 +146,39 @@ export class VerisApp {
     const particles = this.scene.createParticles();
     threeScene.add(particles);
 
-    // 8. Asset Manager
-    this.assetManager = new AssetManager(this.eventBus);
-    await this.assetManager.load();
+    // 8. Create glass panels for visual depth
+    this.createGlassPanels(threeScene);
 
-    // 9. Controls
-    this.mouseController = new MouseController(this.container, this.eventBus);
-    this.mouseController.init();
-
-    // 10. Scroll
-    this.scrollController = new ScrollController(this.container, this.eventBus);
-    this.scrollController.init();
-
-    // 11. Timeline
+    // 9. Timeline — MUST be created before asset load so it can receive AssetsLoaded
     this.timelineManager = new TimelineManager(this.eventBus);
     this.timelineManager.init();
 
-    // 12. Audio (graph only, initialized on first user interaction)
+    // 10. Wire events — MUST be before asset load to catch AssetsLoaded
+    this.wireEvents();
+
+    // 11. Asset Manager
+    this.assetManager = new AssetManager(this.eventBus);
+    await this.assetManager.load();
+
+    // 12. Controls
+    this.mouseController = new MouseController(this.container, this.eventBus);
+    this.mouseController.init();
+
+    // 13. Scroll
+    this.scrollController = new ScrollController(this.container, this.eventBus);
+    this.scrollController.init();
+
+    // 14. Audio (graph only, initialized on first user interaction)
     this.audioManager = new AudioManager();
     this.initAudioOnInteraction();
 
-    // 13. Themes
+    // 15. Themes
     this.themeManager = new ThemeManager(this.eventBus);
     this.themeManager.init(true); // Start dark
 
-    // 14. Performance
+    // 16. Performance
     this.performanceMonitor = new PerformanceMonitor(this.eventBus);
     this.performanceMonitor.init(this.renderer.getRenderer());
-
-    // Wire events
-    this.wireEvents();
 
     // Initial scene setup
     this.scene.setBackground(SCENE.background);
@@ -196,7 +204,6 @@ export class VerisApp {
 
   /**
    * Start the render loop.
-   * Uses requestAnimationFrame with a bound arrow function for reliable cancellation.
    */
   start(): void {
     if (this.disposed) return;
@@ -214,25 +221,10 @@ export class VerisApp {
 
   /* ─── Public Accessors for React Overlay ──────────────────────────────────── */
 
-  /** Get the event bus for React components to subscribe. */
-  getEventBus(): EventBus {
-    return this.eventBus;
-  }
-
-  /** Get the theme manager for the theme toggle button. */
-  getThemeManager(): ThemeManager {
-    return this.themeManager;
-  }
-
-  /** Get the timeline manager for section indicators. */
-  getTimelineManager(): TimelineManager {
-    return this.timelineManager;
-  }
-
-  /** Get the audio manager for interaction-triggered init. */
-  getAudioManager(): AudioManager {
-    return this.audioManager;
-  }
+  getEventBus(): EventBus { return this.eventBus; }
+  getThemeManager(): ThemeManager { return this.themeManager; }
+  getTimelineManager(): TimelineManager { return this.timelineManager; }
+  getAudioManager(): AudioManager { return this.audioManager; }
 
   /** Force a specific theme from the React overlay. */
   setTheme(isDark: boolean): void {
@@ -240,21 +232,39 @@ export class VerisApp {
     this.onThemeChanged();
   }
 
+  /** Get performance stats for the debug overlay. */
+  getPerformanceStats() {
+    return {
+      fps: Math.round(this.performanceMonitor.getFPS()),
+      drawCalls: this.performanceMonitor.getDrawCalls(),
+      triangles: this.performanceMonitor.getTriangles(),
+      memory: this.performanceMonitor.getMemory(),
+      qualityLevel: this.performanceMonitor.getQualityLevel(),
+      camera: this.camera.getPosition(),
+    };
+  }
+
   /**
    * Dispose ALL subsystems in reverse dependency order.
-   * Cancels animation frame and removes all event listeners.
    */
   dispose(): void {
     this.disposed = true;
     this.stop();
 
-    // Unsubscribe all event handlers
     for (const unsub of this.unsubs) {
       unsub();
     }
     this.unsubs = [];
 
-    // Dispose in reverse creation order
+    // Dispose glass panels
+    for (const panel of this.glassPanels) {
+      panel.geometry.dispose();
+      if (panel.material instanceof THREE.Material) {
+        panel.material.dispose();
+      }
+    }
+    this.glassPanels = [];
+
     this.performanceMonitor.dispose();
     this.themeManager.dispose();
     this.audioManager.dispose();
@@ -270,12 +280,33 @@ export class VerisApp {
     this.eventBus.clear();
   }
 
+  /* ─── Glass Panel Creation ───────────────────────────────────────────────── */
+
+  private createGlassPanels(scene: THREE.Scene): void {
+    const glassMat = this.materials.createGlassMaterial();
+
+    // Create 5 floating glass panels at varying positions and rotations
+    const panelConfigs = [
+      { pos: [-3, 1.5, -2], rot: [0.15, 0.3, 0.05], scale: [2.5, 3.5, 0.08] },
+      { pos: [3.5, 0.8, -1], rot: [-0.1, -0.4, 0.08], scale: [2, 2.8, 0.08] },
+      { pos: [-1, 2.5, -3.5], rot: [0.2, 0.1, -0.05], scale: [3, 2, 0.08] },
+      { pos: [2, 1.8, -4], rot: [-0.05, 0.5, 0.1], scale: [1.8, 3.2, 0.08] },
+      { pos: [0, 0.5, -1.5], rot: [0.08, -0.2, 0.03], scale: [4, 2.5, 0.06] },
+    ];
+
+    for (const cfg of panelConfigs) {
+      const geom = new THREE.PlaneGeometry(cfg.scale[0], cfg.scale[1]);
+      const mesh = new THREE.Mesh(geom, glassMat);
+      mesh.position.set(cfg.pos[0], cfg.pos[1], cfg.pos[2]);
+      mesh.rotation.set(cfg.rot[0], cfg.rot[1], cfg.rot[2]);
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+      this.glassPanels.push(mesh);
+    }
+  }
+
   /* ─── Animation Loop ──────────────────────────────────────────────────────── */
 
-  /**
-   * Main animation loop. Bound as an arrow function for stable reference.
-   * NEVER allocates memory inside this loop.
-   */
   private animate = (): void => {
     if (this.disposed) return;
     this.animFrameId = requestAnimationFrame(this.animate);
@@ -284,38 +315,49 @@ export class VerisApp {
     const deltaTime = currentTime - this.lastTime;
     this.lastTime = currentTime;
 
-    // Prevent huge delta spikes (e.g. tab was backgrounded)
     const dt = deltaTime > 0.1 ? 0.016 : deltaTime;
     const elapsed = currentTime;
 
-    // 1. Update Mouse Controller → get normalized position + velocity
+    // 1. Update Mouse Controller
     const mouseState = this.mouseController.update();
 
-    // 2. Update Scroll Controller → get damped 0–1 value
+    // 2. Update Scroll Controller → get damped 0–1 global value
     const scrollValue = this.scrollController.update();
 
-    // 3. Update Timeline with scroll value
-    this.timelineManager.setProgress(scrollValue);
+    // 3. Update Timeline with global scroll value
+    this.timelineManager.setGlobalScroll(scrollValue);
 
-    // 4. Update Camera with mouse state and elapsed time
+    // 4. Update Camera
     this.camera.update(dt, elapsed, mouseState.x, mouseState.y);
 
-    // 5. Update Particles
+    // 5. Rotate glass panels slowly
+    this.updateGlassPanels(elapsed);
+
+    // 6. Update Particles
     this.scene.updateParticles(dt, elapsed);
 
-    // 6. Update Lights
+    // 7. Update Lights
     this.lights.update();
 
-    // 7. Update Performance Monitor
+    // 8. Update Performance Monitor
     this.performanceMonitor.update();
 
-    // 8. Render
+    // 9. Render
     this.renderer.getRenderer().render(this.scene.getScene(), this.camera.getCamera());
   };
 
+  /** Subtle glass panel rotation for living feel. */
+  private updateGlassPanels(elapsed: number): void {
+    for (let i = 0; i < this.glassPanels.length; i++) {
+      const panel = this.glassPanels[i];
+      const offset = i * 1.7;
+      panel.rotation.y += Math.sin(elapsed * 0.15 + offset) * 0.00008;
+      panel.rotation.x += Math.cos(elapsed * 0.12 + offset * 0.5) * 0.00005;
+    }
+  }
+
   /* ─── Event Wiring ────────────────────────────────────────────────────────── */
 
-  /** Wire cross-module event subscriptions. */
   private wireEvents(): void {
     // AssetsLoaded → advance from PRELOADER to HERO
     this.unsubs.push(
@@ -346,9 +388,9 @@ export class VerisApp {
       }),
     );
 
-    // Listen for window resize natively (since React may not handle it)
+    // Window resize (native listener, since this is the primary resize source)
     const handleWindowResize = (): void => {
-      this.handleResize();
+      this.eventBus.emit(VerisEvent.Resize);
     };
     window.addEventListener('resize', handleWindowResize);
     this.unsubs.push(() => window.removeEventListener('resize', handleWindowResize));
@@ -364,9 +406,6 @@ export class VerisApp {
 
   /* ─── Event Handlers ──────────────────────────────────────────────────────── */
 
-  /**
-   * Handle a section change — update camera position target.
-   */
   private onSectionChanged(toState: string): void {
     const target = SECTION_CAMERA_TARGETS[toState];
     if (!target) return;
@@ -383,9 +422,6 @@ export class VerisApp {
     );
   }
 
-  /**
-   * Handle a theme change — propagate to scene, materials, and lights.
-   */
   private onThemeChanged(): void {
     const lerpState = this.themeManager.getLerpState();
     const isDark = this.themeManager.isDark();
@@ -393,6 +429,9 @@ export class VerisApp {
     // Update scene background and fog
     this.scene.setBackground(lerpState.background.getHex());
     this.scene.setFogColor(lerpState.fogColor.getHex());
+
+    // Update renderer exposure
+    this.renderer.getRenderer().toneMappingExposure = lerpState.exposure;
 
     // Update materials
     this.materials.updateForTheme(isDark);
@@ -410,9 +449,6 @@ export class VerisApp {
     }
   }
 
-  /**
-   * Handle window/container resize.
-   */
   private handleResize(): void {
     const w = this.container.clientWidth || window.innerWidth;
     const h = this.container.clientHeight || window.innerHeight;
@@ -423,49 +459,31 @@ export class VerisApp {
     this.camera.resize(w, h);
   }
 
-  /**
-   * Handle adaptive quality change.
-   */
   private onQualityChanged(level: number): void {
     const currentRatio = this.renderer.getPixelRatio();
 
     switch (level) {
       case 0:
-        // Full quality — restore to device pixel ratio (capped)
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, RENDERER.maxPixelRatio));
         break;
       case 1:
         // Reduce bloom (handled by post-processing when added)
-        // For now, keep pixel ratio
         break;
       case 2:
-        // Reduce pixel ratio
         this.renderer.setPixelRatio(Math.min(currentRatio * 0.75, RENDERER.maxPixelRatio));
         break;
       case 3:
-        // Minimal — lowest pixel ratio
         this.renderer.setPixelRatio(1);
         break;
     }
   }
 
-  /**
-   * Set up audio initialization on first user interaction.
-   * Uses a one-time listener pattern — fires once, then removes itself.
-   */
   private initAudioOnInteraction(): void {
     if (this.audioInitBound) return;
     this.audioInitBound = true;
 
     const initHandler = (): void => {
       this.audioManager.init();
-      cleanup();
-    };
-
-    const cleanup = (): void => {
-      window.removeEventListener('pointerdown', initHandler);
-      window.removeEventListener('keydown', initHandler);
-      window.removeEventListener('touchstart', initHandler);
     };
 
     window.addEventListener('pointerdown', initHandler, { once: true });

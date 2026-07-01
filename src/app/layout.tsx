@@ -50,7 +50,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${cormorant.variable} ${inter.variable} antialiased`}
-        style={{ background: "#050505", color: "#F5F5F5" }}
       >
         {children}
       </body>

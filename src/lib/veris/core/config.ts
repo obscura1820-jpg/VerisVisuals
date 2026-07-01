@@ -22,14 +22,13 @@ export const RENDERER = {
   stencil: false,
   depth: true,
 
-  /** Tone mapping */
-  toneMapping: 4 as const, /* THREE.ACESFilmicToneMapping = 4 */
+  /** Tone mapping — ACES Filmic (numeric constant from THREE.ACESFilmicToneMapping) */
+  toneMapping: 4,
   exposure: 1.15,
-  outputColorSpace: 3001 as const, /* THREE.SRGBColorSpace = 3001 */
 
   /** Shadows */
   shadowMap: true,
-  shadowMapType: 2 as const, /* THREE.PCFSoftShadowMap = 2 */
+  shadowMapType: 2, /* THREE.PCFSoftShadowMap */
 
   /** Pixel ratio cap */
   maxPixelRatio: 2,
@@ -181,7 +180,7 @@ export const PARTICLES = {
   count: 400,
   size: 0.025,
   sizeAttenuation: true,
-  blending: 1 as const, /* THREE.AdditiveBlending */
+  blending: 2, /* THREE.AdditiveBlending */
   depthWrite: false,
   opacity: 0.35,
   spreadX: 25,
