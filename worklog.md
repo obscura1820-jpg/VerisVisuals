@@ -155,3 +155,25 @@ Stage Summary:
   - Gallery internal touch: ✓ (no unwanted section navigation)
   - Desktop wheel scroll: ✓ (unchanged, Hero → Archive verified)
 - ESLint: 0 errors, 0 warnings
+
+---
+Task ID: 7
+Agent: Main Coordinator
+Task: Build About, Detail, Contact sections + update timeline to 5 segments
+
+Work Log:
+- Updated timeline.ts: Added ABOUT state between HERO and ARCHIVE, now 5 scrollable sections at 0.20 each
+- Built ABOUT section: circular profile photo (Salim Shaikh), name, location, 3-line biography, 5 specialty tags (Commercial, Weddings, Portraits, Editorial, Product)
+- Built DETAIL section (Selected Works): 3-column responsive grid (3/2/1 cols at breakpoints) with 3 curated project cards (JRL Grooming Tools, Golden Hour Vows, Shadow & Form) each with image, category label, title, description
+- Built CONTACT section (Commission): "Let's Create Together" heading, description, 3 contact links (email, Instagram, WhatsApp) with inline SVG icons, location footer
+- Updated nav dots: 5 dots (Hero, About, Archive, Works, Commission)
+- Updated scroll.ts: Increased VIRTUAL_SCROLL_RANGE from 5000 to 8000 for smoother 5-section navigation, added DETAIL overlay to scrollable overlay selector for touch scrolling
+- Added ~250 lines of CSS for all 3 sections (about, detail, contact) with theme-aware styling
+- Fixed duplicate REDUCED MOTION CSS header
+
+Stage Summary:
+- Files modified: timeline.ts, page.tsx, globals.css, scroll.ts
+- All 5 sections verified via browser: Hero → About → Archive → Detail → Contact navigation works
+- Theme toggle works, mobile responsive (390x844), 5 nav dots rendered
+- ESLint: 0 errors, 0 warnings
+- Zero runtime JS errors in browser

@@ -19,7 +19,7 @@ import { SCROLL } from './config';
 import { clamp01, lerp } from './utils';
 
 /** Approximate document height in virtual scroll units for 0–1 mapping. */
-const VIRTUAL_SCROLL_RANGE = 5000;
+const VIRTUAL_SCROLL_RANGE = 8000;
 
 /** Minimum delta magnitude to register a scroll event (filters noise). */
 const DEAD_ZONE = 1;
@@ -33,8 +33,8 @@ const MOMENTUM_DECAY = 0.93;
 /** Minimum momentum velocity to keep animating. */
 const MOMENTUM_MIN_VELOCITY = 0.00005;
 
-/** CSS selector for the gallery overlay that has its own internal scroll. */
-const GALLERY_SELECTOR = '.veris-phase-overlay--gallery';
+/** CSS selectors for overlays that have their own internal scroll. */
+const SCROLLABLE_OVERLAY_SELECTOR = '.veris-phase-overlay--gallery, .veris-phase-overlay--detail';
 
 /** Number of recent (Y, time) samples for velocity calculation. */
 const VELOCITY_SAMPLE_SIZE = 5;
@@ -240,22 +240,22 @@ export class ScrollController {
 
     // Check if touch is inside a scrollable gallery overlay
     const target = e.target as HTMLElement;
-    const gallery = target.closest(GALLERY_SELECTOR) as HTMLElement | null;
+    const scrollableOverlay = target.closest(SCROLLABLE_OVERLAY_SELECTOR) as HTMLElement | null;
 
-    if (gallery) {
+    if (scrollableOverlay) {
       const scrollingDown = deltaY > 0;
       const scrollingUp = deltaY < 0;
 
-      const atTop = gallery.scrollTop <= 1;
-      const atBottom = gallery.scrollTop + gallery.clientHeight >= gallery.scrollHeight - 1;
+      const atTop = scrollableOverlay.scrollTop <= 1;
+      const atBottom = scrollableOverlay.scrollTop + scrollableOverlay.clientHeight >= scrollableOverlay.scrollHeight - 1;
 
-      // If the gallery can still scroll in the swipe direction, let it handle it natively
+      // If the overlay can still scroll in the swipe direction, let it handle it natively
       if ((scrollingDown && !atBottom) || (scrollingUp && !atTop)) {
         this.lastTouchWasGalleryInternal = true;
-        return; // Don't prevent default — let the gallery's overflow-y: auto handle it
+        return; // Don't prevent default — let the overlay's overflow-y: auto handle it
       }
 
-      // Gallery is at its boundary — hijack for virtual section scrolling
+      // Overlay is at its boundary — hijack for virtual section scrolling
       this.lastTouchWasGalleryInternal = false;
       e.preventDefault();
       const normalizedDelta = (deltaY * TOUCH_SENSITIVITY) / VIRTUAL_SCROLL_RANGE;

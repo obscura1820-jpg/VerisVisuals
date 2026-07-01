@@ -2,13 +2,14 @@
  * VerisVisuals — Timeline Manager
  * ===================================
  * Finite state machine that controls the experience sections.
- * Order: PRELOADER → HERO → ARCHIVE → DETAIL → CONTACT
+ * Order: PRELOADER → HERO → ABOUT → ARCHIVE → DETAIL → CONTACT
  *
  * Scroll progress (0–1) maps to sections as equal segments:
- *   0.00–0.25 = HERO
- *   0.25–0.50 = ARCHIVE
- *   0.50–0.75 = DETAIL
- *   0.75–1.00 = CONTACT
+ *   0.00–0.20 = HERO
+ *   0.20–0.40 = ABOUT
+ *   0.40–0.60 = ARCHIVE
+ *   0.60–0.80 = DETAIL
+ *   0.80–1.00 = CONTACT
  *
  * Transitions between sections emit `SectionChanged` events.
  *
@@ -22,6 +23,7 @@ import { EventBus, VerisEvent } from './event-bus';
 export enum TimelineState {
   PRELOADER = 'PRELOADER',
   HERO = 'HERO',
+  ABOUT = 'ABOUT',
   ARCHIVE = 'ARCHIVE',
   DETAIL = 'DETAIL',
   CONTACT = 'CONTACT',
@@ -30,6 +32,7 @@ export enum TimelineState {
 /** Canonical order of scrollable states (PRELOADER excluded). */
 const SCROLLABLE_STATES: TimelineState[] = [
   TimelineState.HERO,
+  TimelineState.ABOUT,
   TimelineState.ARCHIVE,
   TimelineState.DETAIL,
   TimelineState.CONTACT,

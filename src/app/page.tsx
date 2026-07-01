@@ -388,6 +388,8 @@ export default function Home() {
 
   /* ── Section visibility ─────────────────────────────────────────────────────── */
   const showHero = preloaderComplete && currentSection === TimelineState.HERO;
+  const showAbout =
+    preloaderComplete && currentSection === TimelineState.ABOUT;
   const showArchive =
     preloaderComplete && currentSection === TimelineState.ARCHIVE;
   const showDetail =
@@ -557,35 +559,156 @@ export default function Home() {
         />
       )}
 
-      {/* ── Section: DETAIL (empty — Milestone 3) ────────────────────────────── */}
+      {/* ── Section: ABOUT ──────────────────────────────────────────────────── */}
       <div
         className="veris-phase-overlay"
+        style={{
+          opacity: showAbout ? 1 : 0,
+          pointerEvents: showAbout ? "auto" : "none",
+        }}
+        role="region"
+        aria-label="About"
+      >
+        <div className="veris-about-container">
+          <div className="veris-about-photo-ring">
+            <img
+              src="/salim-shaikh.png"
+              alt="Salim Shaikh"
+              className="veris-about-photo"
+              draggable={false}
+            />
+          </div>
+          <div className="veris-about-content">
+            <div className="veris-about-label font-ui">About</div>
+            <h2 className="veris-about-name font-display">Salim Shaikh</h2>
+            <div className="veris-about-location font-ui">Mumbai, India</div>
+            <p className="veris-about-bio">
+              Photographer and visual storyteller based in Mumbai. With a keen eye
+              for light, texture, and human emotion, Salim crafts imagery that
+              transcends documentation — capturing the quiet poetry in every frame.
+              His work spans commercial branding, editorial portraits, and intimate
+              wedding storytelling, each approached with the same devotion to
+              authenticity and craft.
+            </p>
+            <div className="veris-about-specialties">
+              {[
+                "Commercial",
+                "Weddings",
+                "Portraits",
+                "Editorial",
+                "Product",
+              ].map((s) => (
+                <span key={s} className="veris-about-tag font-ui">
+                  {s}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Section: DETAIL — Selected Works ────────────────────────────────── */}
+      <div
+        className="veris-phase-overlay veris-phase-overlay--detail"
         style={{
           opacity: showDetail ? 1 : 0,
           pointerEvents: showDetail ? "auto" : "none",
         }}
         role="region"
-        aria-label="Detail"
+        aria-label="Selected Works"
       >
-        <div
-          className="font-ui"
-          style={{ fontSize: "0.55rem", opacity: 0.3, letterSpacing: "0.4em" }}
-        >
-          Selected Works
+        <header className="veris-detail-header">
+          <div className="veris-detail-label font-ui">Selected Works</div>
+          <h2
+            className="veris-detail-title font-display"
+            style={{
+              fontSize: "clamp(1.2rem, 3vw, 2.2rem)",
+              opacity: 0.15,
+            }}
+          >
+            Curated Selection
+          </h2>
+        </header>
+        <div className="veris-detail-grid">
+          <article className="veris-detail-card">
+            <div className="veris-detail-card-img">
+              <img
+                src="/gallery/CH_F0033.jpg"
+                alt="JRL grooming tools product photography"
+                loading="lazy"
+                draggable={false}
+              />
+            </div>
+            <div className="veris-detail-card-info">
+              <span className="veris-detail-card-category font-ui">
+                Commercial
+              </span>
+              <h3 className="veris-detail-card-title font-display">
+                JRL Grooming Tools
+              </h3>
+              <p className="veris-detail-card-desc">
+                Minimalist product photography for premium grooming brand.
+              </p>
+            </div>
+          </article>
+          <article className="veris-detail-card">
+            <div className="veris-detail-card-img">
+              <img
+                src="/gallery/104A0939.jpg"
+                alt="Wedding couple in traditional Indian attire"
+                loading="lazy"
+                draggable={false}
+              />
+            </div>
+            <div className="veris-detail-card-info">
+              <span className="veris-detail-card-category font-ui">
+                Weddings
+              </span>
+              <h3 className="veris-detail-card-title font-display">
+                Golden Hour Vows
+              </h3>
+              <p className="veris-detail-card-desc">
+                Intimate wedding portrait captured in warm natural light.
+              </p>
+            </div>
+          </article>
+          <article className="veris-detail-card">
+            <div className="veris-detail-card-img">
+              <img
+                src="/gallery/CH_F6290.jpg"
+                alt="JRL hair dryers dark gradient background"
+                loading="lazy"
+                draggable={false}
+              />
+            </div>
+            <div className="veris-detail-card-info">
+              <span className="veris-detail-card-category font-ui">
+                Commercial
+              </span>
+              <h3 className="veris-detail-card-title font-display">
+                Shadow & Form
+              </h3>
+              <p className="veris-detail-card-desc">
+                Dark gradient study for premium hair dryer campaign.
+              </p>
+            </div>
+          </article>
         </div>
-        <div
-          className="font-display"
-          style={{
-            fontSize: "clamp(1.2rem, 3vw, 2rem)",
-            opacity: 0.15,
-            marginTop: "1rem",
-          }}
-        >
-          Coming Soon
+        <div className="veris-detail-footer">
+          <span
+            className="font-ui"
+            style={{
+              fontSize: "0.5rem",
+              opacity: 0.15,
+              letterSpacing: "0.3em",
+            }}
+          >
+            3 Selected Works
+          </span>
         </div>
       </div>
 
-      {/* ── Section: CONTACT (empty — Milestone 4) ──────────────────────────── */}
+      {/* ── Section: CONTACT ────────────────────────────────────────────────── */}
       <div
         className="veris-phase-overlay"
         style={{
@@ -595,21 +718,85 @@ export default function Home() {
         role="region"
         aria-label="Contact"
       >
-        <div
-          className="font-ui"
-          style={{ fontSize: "0.55rem", opacity: 0.3, letterSpacing: "0.4em" }}
-        >
-          Commission
-        </div>
-        <div
-          className="font-display"
-          style={{
-            fontSize: "clamp(1.2rem, 3vw, 2rem)",
-            opacity: 0.15,
-            marginTop: "1rem",
-          }}
-        >
-          Coming Soon
+        <div className="veris-contact-container">
+          <div className="veris-contact-label font-ui">Commission</div>
+          <h2
+            className="veris-contact-heading font-display"
+            style={{
+              fontSize: "clamp(1.6rem, 4vw, 3.2rem)",
+            }}
+          >
+            Let&apos;s Create
+            <br />
+            Together
+          </h2>
+          <p className="veris-contact-bio">
+            Available for commercial, editorial, and wedding commissions.
+            Every project begins with a conversation.
+          </p>
+          <div className="veris-contact-links">
+            <a
+              href="mailto:hello@verisvisuals.com"
+              className="veris-contact-link font-ui"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                aria-hidden="true"
+              >
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <polyline points="22,4 12,13 2,4" />
+              </svg>
+              hello@verisvisuals.com
+            </a>
+            <a
+              href="https://instagram.com/verisvisuals"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="veris-contact-link font-ui"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                aria-hidden="true"
+              >
+                <rect x="2" y="2" width="20" height="20" rx="5" />
+                <circle cx="12" cy="12" r="5" />
+                <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+              </svg>
+              @verisvisuals
+            </a>
+            <a
+              href="https://wa.me/919876543210"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="veris-contact-link font-ui"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                aria-hidden="true"
+              >
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+              </svg>
+              WhatsApp
+            </a>
+          </div>
+          <div className="veris-contact-location font-ui">
+            Based in Mumbai, India
+          </div>
         </div>
       </div>
 
@@ -636,6 +823,7 @@ export default function Home() {
         <nav className="veris-nav-dots" aria-label="Section navigation">
           {[
             { state: TimelineState.HERO, label: "Hero" },
+            { state: TimelineState.ABOUT, label: "About" },
             { state: TimelineState.ARCHIVE, label: "Archive" },
             { state: TimelineState.DETAIL, label: "Works" },
             { state: TimelineState.CONTACT, label: "Commission" },
