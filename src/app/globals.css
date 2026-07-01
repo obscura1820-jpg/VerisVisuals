@@ -88,6 +88,14 @@ body.veris-light {
   pointer-events: all;
 }
 
+.veris-preloader-logo {
+  width: clamp(100px, 20vw, 200px);
+  height: auto;
+  opacity: 0.4;
+  margin-bottom: 3rem;
+  object-fit: contain;
+}
+
 .veris-preloader.v-entering {
   animation: preloaderExit var(--veris-transition-duration) ease-in-out forwards;
 }

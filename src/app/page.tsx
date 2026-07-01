@@ -443,17 +443,13 @@ export default function Home() {
         aria-valuemax={100}
         aria-label="Loading experience"
       >
-        <div
-          className="font-display"
-          style={{
-            fontSize: "clamp(0.7rem, 1.5vw, 1rem)",
-            letterSpacing: "0.35em",
-            opacity: 0.4,
-            marginBottom: "3rem",
-          }}
-        >
-          VERISVISUALS
-        </div>
+        <img
+          src="/logo-dark.png"
+          alt=""
+          className="veris-preloader-logo"
+          draggable={false}
+          aria-hidden="true"
+        />
         <OdometerCounter value={loadProgress} />
       </div>
 
