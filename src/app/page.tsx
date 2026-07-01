@@ -116,6 +116,123 @@ Cam: ${stats.camera.x.toFixed(2)}, ${stats.camera.y.toFixed(2)}, ${stats.camera.
    MAIN PAGE COMPONENT — Milestone 1
    ═══════════════════════════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   GALLERY DATA
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+const COMMERCIAL_WORKS = [
+  {
+    src: "/gallery/CH_F0033.jpg",
+    alt: "White JRL grooming tools arranged on a minimalist gray pedestal",
+    span: "full",
+  },
+  {
+    src: "/gallery/CH_F0045.jpg",
+    alt: "JRL clippers and shaver on a white pedestal, soft gray background",
+    span: "half",
+  },
+  {
+    src: "/gallery/CH_F0045-1.png",
+    alt: "JRL grooming tools on light gray pedestal, warm beige background",
+    span: "half",
+  },
+  {
+    src: "/gallery/CH_F5208.jpg",
+    alt: "Two black JRL hair clippers on a matte black background",
+    span: "half",
+  },
+  {
+    src: "/gallery/CH_F6290.jpg",
+    alt: "Two sleek black hair dryers against a dark gradient background",
+    span: "half",
+  },
+] as const;
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   LIGHTBOX
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+function Lightbox({
+  images,
+  index,
+  onClose,
+  onPrev,
+  onNext,
+}: {
+  images: readonly { src: string; alt: string }[];
+  index: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const img = images[index];
+  const count = images.length;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") onPrev();
+      if (e.key === "ArrowRight") onNext();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, onPrev, onNext]);
+
+  return (
+    <div
+      className="veris-lightbox"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Image ${index + 1} of ${count}`}
+    >
+      <div className="veris-lightbox-backdrop" onClick={onClose} />
+      <button
+        className="veris-lightbox-close"
+        onClick={onClose}
+        aria-label="Close"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1">
+          <line x1="2" y1="2" x2="14" y2="14" />
+          <line x1="14" y1="2" x2="2" y2="14" />
+        </svg>
+      </button>
+      <button
+        className="veris-lightbox-nav veris-lightbox-prev"
+        onClick={onPrev}
+        aria-label="Previous image"
+      >
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1">
+          <polyline points="12,4 6,10 12,16" />
+        </svg>
+      </button>
+      <button
+        className="veris-lightbox-nav veris-lightbox-next"
+        onClick={onNext}
+        aria-label="Next image"
+      >
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1">
+          <polyline points="8,4 14,10 8,16" />
+        </svg>
+      </button>
+      <div className="veris-lightbox-content">
+        <img
+          src={img.src}
+          alt={img.alt}
+          className="veris-lightbox-img"
+          draggable={false}
+        />
+      </div>
+      <div className="veris-lightbox-counter">
+        {String(index + 1).padStart(2, "0")} &mdash; {String(count).padStart(2, "0")}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   MAIN PAGE COMPONENT — Milestone 1
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
 export default function Home() {
   /* ── State ──────────────────────────────────────────────────────────────────── */
   const [loadProgress, setLoadProgress] = useState(0);
@@ -125,6 +242,7 @@ export default function Home() {
     TimelineState.PRELOADER,
   );
   const [isDark, setIsDark] = useState(true);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   /* ── Refs ───────────────────────────────────────────────────────────────────── */
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -216,6 +334,25 @@ export default function Home() {
   const showContact =
     preloaderComplete && currentSection === TimelineState.CONTACT;
 
+  /* ── Lightbox controls ─────────────────────────────────────────────────────── */
+  const closeLightbox = useCallback(() => setLightboxIndex(null), []);
+  const prevImage = useCallback(
+    () =>
+      setLightboxIndex((i) =>
+        i !== null ? (i - 1 + COMMERCIAL_WORKS.length) % COMMERCIAL_WORKS.length : null,
+      ),
+    [],
+  );
+  const nextImage = useCallback(
+    () =>
+      setLightboxIndex((i) =>
+        i !== null ? (i + 1) % COMMERCIAL_WORKS.length : null,
+      ),
+    [],
+  );
+
+
+
   /* ═══════════════════════════════════════════════════════════════════════════════
      RENDER
      ═══════════════════════════════════════════════════════════════════════════════ */
@@ -287,33 +424,65 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Section: ARCHIVE (empty — Milestone 2) ───────────────────────────── */}
+      {/* ── Section: ARCHIVE — Commercial Gallery ────────────────────────────── */}
       <div
-        className="veris-phase-overlay"
+        className="veris-phase-overlay veris-phase-overlay--gallery"
         style={{
           opacity: showArchive ? 1 : 0,
           pointerEvents: showArchive ? "auto" : "none",
         }}
         role="region"
-        aria-label="Archive"
+        aria-label="Commercial Gallery"
       >
-        <div
-          className="font-ui"
-          style={{ fontSize: "0.55rem", opacity: 0.3, letterSpacing: "0.4em" }}
-        >
-          Archive
+        <header className="veris-gallery-header">
+          <div className="font-ui" style={{ fontSize: "0.55rem", opacity: 0.3, letterSpacing: "0.4em" }}>
+            Commercial
+          </div>
+          <div className="font-display" style={{ fontSize: "clamp(1rem, 2.5vw, 1.6rem)", opacity: 0.2, marginTop: "0.5rem" }}>
+            Product &amp; Brand Photography
+          </div>
+        </header>
+
+        <div className="veris-gallery-grid">
+          {COMMERCIAL_WORKS.map((work, i) => (
+            <button
+              key={work.src}
+              className={`veris-gallery-item ${work.span === "full" ? "veris-gallery-item--full" : ""}`}
+              onClick={() => setLightboxIndex(i)}
+              aria-label={`View: ${work.alt}`}
+            >
+              <img
+                src={work.src}
+                alt={work.alt}
+                loading="lazy"
+                draggable={false}
+              />
+              <div className="veris-gallery-item-overlay">
+                <span className="veris-gallery-item-counter">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+              </div>
+            </button>
+          ))}
         </div>
-        <div
-          className="font-display"
-          style={{
-            fontSize: "clamp(1.2rem, 3vw, 2rem)",
-            opacity: 0.15,
-            marginTop: "1rem",
-          }}
-        >
-          Editorial &middot; Weddings &middot; Portraits
+
+        <div className="veris-gallery-footer">
+          <span className="font-ui" style={{ fontSize: "0.5rem", opacity: 0.15, letterSpacing: "0.3em" }}>
+            {COMMERCIAL_WORKS.length} Works &middot; JRL
+          </span>
         </div>
       </div>
+
+      {/* ── Lightbox ─────────────────────────────────────────────────────────── */}
+      {showArchive && lightboxIndex !== null && (
+        <Lightbox
+          images={COMMERCIAL_WORKS}
+          index={lightboxIndex}
+          onClose={closeLightbox}
+          onPrev={prevImage}
+          onNext={nextImage}
+        />
+      )}
 
       {/* ── Section: DETAIL (empty — Milestone 3) ────────────────────────────── */}
       <div

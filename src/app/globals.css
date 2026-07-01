@@ -412,6 +412,243 @@ body.veris-light .veris-profile-img {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
+   GALLERY (Archive section override)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.veris-phase-overlay--gallery {
+  justify-content: flex-start;
+  align-items: stretch;
+  padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.veris-gallery-header {
+  flex-shrink: 0;
+  text-align: center;
+  padding: clamp(4rem, 12vh, 8rem) 2rem 2rem;
+}
+
+.veris-gallery-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 0 clamp(1rem, 4vw, 4rem);
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .veris-gallery-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Gallery Items ────────────────────────────────────────────────────────────── */
+
+.veris-gallery-item {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  cursor: pointer;
+  background: rgba(128, 128, 128, 0.06);
+  padding: 0;
+  border: none;
+  outline: none;
+}
+
+.veris-gallery-item--full {
+  grid-column: 1 / -1;
+  aspect-ratio: 16 / 7;
+}
+
+@media (max-width: 640px) {
+  .veris-gallery-item {
+    aspect-ratio: 3 / 2;
+  }
+  .veris-gallery-item--full {
+    aspect-ratio: 4 / 3;
+  }
+}
+
+.veris-gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0.85;
+  transition: opacity 600ms ease, transform 800ms cubic-bezier(0.25, 1, 0.5, 1);
+  will-change: transform, opacity;
+}
+
+.veris-gallery-item:hover img {
+  opacity: 1;
+  transform: scale(1.03);
+}
+
+.veris-gallery-item:focus-visible img {
+  opacity: 1;
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+/* ── Gallery Item Hover Overlay ──────────────────────────────────────────────── */
+
+.veris-gallery-item-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 0.75rem;
+  opacity: 0;
+  transition: opacity 500ms ease;
+  pointer-events: none;
+}
+
+.veris-gallery-item:hover .veris-gallery-item-overlay {
+  opacity: 1;
+}
+
+.veris-gallery-item-counter {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.5rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  opacity: 0.5;
+  color: var(--veris-fg);
+}
+
+/* ── Gallery Footer ──────────────────────────────────────────────────────────── */
+
+.veris-gallery-footer {
+  flex-shrink: 0;
+  text-align: center;
+  padding: 2rem 2rem clamp(4rem, 10vh, 6rem);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   LIGHTBOX
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.veris-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: lightboxIn 400ms cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+@keyframes lightboxIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.veris-lightbox-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+body.veris-light .veris-lightbox-backdrop {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.veris-lightbox-content {
+  position: relative;
+  z-index: 1;
+  max-width: 90vw;
+  max-height: 85vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.veris-lightbox-img {
+  max-width: 90vw;
+  max-height: 85vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  animation: lightboxImgIn 500ms cubic-bezier(0.25, 1, 0.5, 1) 80ms both;
+  border-radius: 2px;
+}
+
+@keyframes lightboxImgIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ── Lightbox Controls ────────────────────────────────────────────────────────── */
+
+.veris-lightbox-close,
+.veris-lightbox-nav {
+  position: absolute;
+  z-index: 2;
+  background: none;
+  border: none;
+  color: var(--veris-fg);
+  cursor: pointer;
+  opacity: 0.3;
+  transition: opacity 300ms ease;
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.veris-lightbox-close:hover,
+.veris-lightbox-nav:hover {
+  opacity: 0.8;
+}
+
+.veris-lightbox-close {
+  top: 1.5rem;
+  right: 1.5rem;
+}
+
+.veris-lightbox-prev {
+  left: clamp(0.5rem, 3vw, 2rem);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.veris-lightbox-next {
+  right: clamp(0.5rem, 3vw, 2rem);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.veris-lightbox-counter {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.55rem;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  opacity: 0.25;
+  color: var(--veris-fg);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
    REDUCED MOTION
    ═══════════════════════════════════════════════════════════════════════════════ */
 
@@ -429,5 +666,10 @@ body.veris-light .veris-profile-img {
 
   .odometer-digit-inner {
     transition: none;
+  }
+
+  .veris-lightbox,
+  .veris-lightbox-img {
+    animation: none;
   }
 }

@@ -68,3 +68,28 @@ Stage Summary:
 - Static asset: /public/salim-shaikh.png
 - ESLint: 0 errors, 0 warnings
 - Browser verified: profile visible in both dark (Studio) and light (Gallery) themes, mobile responsive
+
+---
+Task ID: 4
+Agent: Main Coordinator
+Task: Add Commercial gallery with 5 JRL product photography images
+
+Work Log:
+- Analyzed all 5 images with VLM for descriptive alt text (JRL grooming tools/product photography)
+- Copied images to /public/gallery/, renamed Chinese-character filename to CH_F6290.jpg
+- Built Commercial gallery in ARCHIVE section replacing "Coming Soon" placeholder
+- Gallery layout: 2-column CSS grid (1-col on mobile), first image full-width hero (16:7), rest 4:3
+- Added Lightbox component: full-screen overlay with blur backdrop, prev/next navigation, keyboard support (Esc/Arrow), counter, 80ms staggered scale-in animation
+- Theme-aware: lightbox backdrop inverts (black 92% → white 92%) in Gallery mode
+- Hover effects: images scale 1.03x with opacity rise, number counter fades in
+- Scrollable gallery section (overflow-y auto) with flex-start override on phase overlay
+- Fixed React lint: removed setLightboxIndex from useEffect, added showArchive guard to lightbox render
+- Lazy loading on gallery images, all images accessible via button elements
+
+Stage Summary:
+- Files modified: page.tsx (+COMMERCIAL_WORKS data, +Lightbox component, archive section gallery), globals.css (gallery grid + lightbox styles ~240 lines)
+- Static assets: /public/gallery/{CH_F0033,CH_F0045,CH_F0045-1,CH_F5208,CH_F6290}.jpg|png
+- Desktop: 1177px full-width hero + 587px 2×2 grid below
+- Mobile (390px): single column 358px, full-width hero + 4 stacked images
+- ESLint: 0 errors, 0 warnings
+- Browser verified: gallery renders correctly, lightbox opens/closes/navigates, mobile responsive, zero runtime errors
