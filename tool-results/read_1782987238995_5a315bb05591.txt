@@ -1,0 +1,1319 @@
+     1→@import "tailwindcss";
+     2→@import "tw-animate-css";
+     3→
+     4→@custom-variant dark (&:is(.dark *));
+     5→
+     6→@theme inline {
+     7→  --font-cormorant: var(--font-cormorant);
+     8→  --font-inter: var(--font-inter);
+     9→}
+    10→
+    11→/* ═══════════════════════════════════════════════════════════════════════════════
+    12→   RESET & BASE
+    13→   ═══════════════════════════════════════════════════════════════════════════════ */
+    14→
+    15→:root {
+    16→  --veris-bg: #050505;
+    17→  --veris-fg: #F5F5F5;
+    18→  --veris-transition-duration: 1500ms;
+    19→}
+    20→
+    21→* {
+    22→  margin: 0;
+    23→  padding: 0;
+    24→  box-sizing: border-box;
+    25→}
+    26→
+    27→html {
+    28→  scroll-behavior: auto;
+    29→}
+    30→
+    31→body {
+    32→  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    33→  background: var(--veris-bg);
+    34→  color: var(--veris-fg);
+    35→  overflow-x: hidden;
+    36→  -webkit-font-smoothing: antialiased;
+    37→  -moz-osx-font-smoothing: grayscale;
+    38→  overscroll-behavior: none;
+    39→}
+    40→
+    41→body.no-scroll {
+    42→  overflow: hidden;
+    43→}
+    44→
+    45→body.veris-light {
+    46→  --veris-bg: #F9F9F9;
+    47→  --veris-fg: #111111;
+    48→}
+    49→
+    50→/* ═══════════════════════════════════════════════════════════════════════════════
+    51→   SCROLLBAR
+    52→   ═══════════════════════════════════════════════════════════════════════════════ */
+    53→
+    54→::-webkit-scrollbar {
+    55→  width: 0px;
+    56→  background: transparent;
+    57→}
+    58→
+    59→/* ═══════════════════════════════════════════════════════════════════════════════
+    60→   TYPOGRAPHY
+    61→   ═══════════════════════════════════════════════════════════════════════════════ */
+    62→
+    63→.font-display {
+    64→  font-family: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+    65→  font-weight: 600;
+    66→  letter-spacing: 0;
+    67→}
+    68→
+    69→.font-ui {
+    70→  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    71→  font-weight: 500;
+    72→  letter-spacing: 0.25em;
+    73→  text-transform: uppercase;
+    74→}
+    75→
+    76→/* ═══════════════════════════════════════════════════════════════════════════════
+    77→   PRELOADER
+    78→   ═══════════════════════════════════════════════════════════════════════════════ */
+    79→
+    80→.veris-preloader {
+    81→  position: fixed;
+    82→  inset: 0;
+    83→  z-index: 100;
+    84→  display: flex;
+    85→  flex-direction: column;
+    86→  align-items: center;
+    87→  justify-content: center;
+    88→  background: #050505;
+    89→  pointer-events: all;
+    90→  touch-action: none;
+    91→}
+    92→
+    93→.veris-preloader-logo {
+    94→  width: clamp(100px, 20vw, 200px);
+    95→  height: auto;
+    96→  opacity: 0.4;
+    97→  margin-bottom: 3rem;
+    98→  object-fit: contain;
+    99→}
+   100→
+   101→.veris-preloader.v-entering {
+   102→  animation: preloaderExit var(--veris-transition-duration) ease-in-out forwards;
+   103→}
+   104→
+   105→@keyframes preloaderExit {
+   106→  0% {
+   107→    opacity: 1;
+   108→    transform: scale(1);
+   109→  }
+   110→  50% {
+   111→    opacity: 0.8;
+   112→    transform: scale(1.05);
+   113→  }
+   114→  100% {
+   115→    opacity: 0;
+   116→    transform: scale(1.2);
+   117→    pointer-events: none;
+   118→  }
+   119→}
+   120→
+   121→/* Odometer digit animation — each digit eases individually */
+   122→.odometer-digit {
+   123→  display: inline-block;
+   124→  overflow: hidden;
+   125→  height: 1em;
+   126→  vertical-align: bottom;
+   127→}
+   128→
+   129→.odometer-digit-inner {
+   130→  display: flex;
+   131→  flex-direction: column;
+   132→  transition: transform 700ms cubic-bezier(0.25, 1, 0.5, 1);
+   133→}
+   134→
+   135→.odometer-digit-inner span {
+   136→  display: flex;
+   137→  align-items: center;
+   138→  justify-content: center;
+   139→  height: 1em;
+   140→  line-height: 1;
+   141→}
+   142→
+   143→/* ═══════════════════════════════════════════════════════════════════════════════
+   144→   CANVAS
+   145→   ═══════════════════════════════════════════════════════════════════════════════ */
+   146→
+   147→.veris-canvas-container {
+   148→  position: fixed;
+   149→  inset: 0;
+   150→  z-index: 0;
+   151→}
+   152→
+   153→.veris-canvas-container canvas {
+   154→  display: block;
+   155→  width: 100% !important;
+   156→  height: 100% !important;
+   157→}
+   158→
+   159→/* ═══════════════════════════════════════════════════════════════════════════════
+   160→   PHASE OVERLAYS
+   161→   ═══════════════════════════════════════════════════════════════════════════════ */
+   162→
+   163→.veris-phase-overlay {
+   164→  position: fixed;
+   165→  inset: 0;
+   166→  z-index: 10;
+   167→  display: flex;
+   168→  flex-direction: column;
+   169→  align-items: center;
+   170→  justify-content: center;
+   171→  pointer-events: none;
+   172→  transition: opacity 800ms cubic-bezier(0.25, 1, 0.5, 1);
+   173→  padding: 2rem;
+   174→  touch-action: none;
+   175→}
+   176→
+   177→.veris-phase-overlay.active {
+   178→  pointer-events: auto;
+   179→}
+   180→
+   181→/* ═══════════════════════════════════════════════════════════════════════════════
+   182→   MANIFESTO / HERO
+   183→   ═══════════════════════════════════════════════════════════════════════════════ */
+   184→
+   185→.veris-wordmark {
+   186→  font-family: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+   187→  font-weight: 600;
+   188→  font-size: clamp(2.5rem, 8vw, 7rem);
+   189→  letter-spacing: 0.15em;
+   190→  text-align: center;
+   191→  line-height: 1.1;
+   192→  user-select: none;
+   193→}
+   194→
+   195→.veris-wordmark .v-letter {
+   196→  display: inline-block;
+   197→  position: relative;
+   198→}
+   199→
+   200→.veris-wordmark .v-letter::after {
+   201→  content: "";
+   202→  position: absolute;
+   203→  inset: -10%;
+   204→  background: radial-gradient(
+   205→    ellipse at center,
+   206→    rgba(255, 255, 255, 0.06) 0%,
+   207→    transparent 70%
+   208→  );
+   209→  pointer-events: none;
+   210→  transition: opacity var(--veris-transition-duration) ease;
+   211→}
+   212→
+   213→body.veris-light .veris-wordmark .v-letter::after {
+   214→  background: radial-gradient(
+   215→    ellipse at center,
+   216→    rgba(0, 0, 0, 0.04) 0%,
+   217→    transparent 70%
+   218→  );
+   219→}
+   220→
+   221→.veris-tagline {
+   222→  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+   223→  font-weight: 400;
+   224→  font-size: clamp(0.7rem, 1.5vw, 1rem);
+   225→  letter-spacing: 0.2em;
+   226→  text-transform: uppercase;
+   227→  margin-top: 2rem;
+   228→  opacity: 0.6;
+   229→}
+   230→
+   231→/* ═══════════════════════════════════════════════════════════════════════════════
+   232→   HERO PROFILE
+   233→   ═══════════════════════════════════════════════════════════════════════════════ */
+   234→
+   235→.veris-hero-profile {
+   236→  position: absolute;
+   237→  bottom: 3rem;
+   238→  left: 50%;
+   239→  transform: translateX(-50%);
+   240→  display: flex;
+   241→  flex-direction: column;
+   242→  align-items: center;
+   243→  gap: 0.75rem;
+   244→  animation: profileFadeIn 1.2s cubic-bezier(0.25, 1, 0.5, 1) 0.4s both;
+   245→}
+   246→
+   247→@keyframes profileFadeIn {
+   248→  from {
+   249→    opacity: 0;
+   250→    transform: translateX(-50%) translateY(12px);
+   251→  }
+   252→  to {
+   253→    opacity: 1;
+   254→    transform: translateX(-50%) translateY(0);
+   255→  }
+   256→}
+   257→
+   258→.veris-profile-ring {
+   259→  width: clamp(56px, 10vw, 80px);
+   260→  height: clamp(56px, 10vw, 80px);
+   261→  border-radius: 50%;
+   262→  padding: 1.5px;
+   263→  background: linear-gradient(
+   264→    135deg,
+   265→    rgba(255, 255, 255, 0.2) 0%,
+   266→    rgba(255, 255, 255, 0.05) 100%
+   267→  );
+   268→  transition: background var(--veris-transition-duration) ease;
+   269→}
+   270→
+   271→body.veris-light .veris-profile-ring {
+   272→  background: linear-gradient(
+   273→    135deg,
+   274→    rgba(0, 0, 0, 0.15) 0%,
+   275→    rgba(0, 0, 0, 0.04) 100%
+   276→  );
+   277→}
+   278→
+   279→.veris-profile-img {
+   280→  width: 100%;
+   281→  height: 100%;
+   282→  border-radius: 50%;
+   283→  object-fit: cover;
+   284→  display: block;
+   285→  opacity: 0.85;
+   286→  transition: opacity var(--veris-transition-duration) ease;
+   287→}
+   288→
+   289→body.veris-light .veris-profile-img {
+   290→  opacity: 0.9;
+   291→}
+   292→
+   293→.veris-hero-profile:hover .veris-profile-img {
+   294→  opacity: 1;
+   295→}
+   296→
+   297→.veris-profile-info {
+   298→  display: flex;
+   299→  flex-direction: column;
+   300→  align-items: center;
+   301→  gap: 0.3rem;
+   302→}
+   303→
+   304→.veris-profile-name {
+   305→  font-size: 0.55rem;
+   306→  opacity: 0.35;
+   307→  letter-spacing: 0.25em;
+   308→  transition: opacity 600ms ease;
+   309→}
+   310→
+   311→.veris-hero-profile:hover .veris-profile-name {
+   312→  opacity: 0.6;
+   313→}
+   314→
+   315→.veris-profile-location {
+   316→  font-size: 0.5rem;
+   317→  opacity: 0.15;
+   318→  letter-spacing: 0.2em;
+   319→  transition: opacity 600ms ease;
+   320→}
+   321→
+   322→.veris-hero-profile:hover .veris-profile-location {
+   323→  opacity: 0.35;
+   324→}
+   325→
+   326→/* ═══════════════════════════════════════════════════════════════════════════════
+   327→   THEME TOGGLE
+   328→   ═══════════════════════════════════════════════════════════════════════════════ */
+   329→
+   330→.veris-theme-toggle {
+   331→  position: fixed;
+   332→  bottom: 2rem;
+   333→  left: 2rem;
+   334→  z-index: 50;
+   335→  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+   336→  font-weight: 500;
+   337→  font-size: 0.6rem;
+   338→  letter-spacing: 0.3em;
+   339→  text-transform: uppercase;
+   340→  opacity: 0.3;
+   341→  cursor: pointer;
+   342→  background: none;
+   343→  border: none;
+   344→  color: inherit;
+   345→  padding: 0.5rem;
+   346→  transition: opacity 400ms ease;
+   347→  user-select: none;
+   348→}
+   349→
+   350→.veris-theme-toggle:hover {
+   351→  opacity: 0.7;
+   352→}
+   353→
+   354→/* ═══════════════════════════════════════════════════════════════════════════════
+   355→   SCROLL HINT
+   356→   ═══════════════════════════════════════════════════════════════════════════════ */
+   357→
+   358→.veris-scroll-hint {
+   359→  position: fixed;
+   360→  bottom: 2rem;
+   361→  left: 50%;
+   362→  transform: translateX(-50%);
+   363→  z-index: 20;
+   364→  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+   365→  font-size: 0.55rem;
+   366→  letter-spacing: 0.3em;
+   367→  text-transform: uppercase;
+   368→  opacity: 0;
+   369→  transition: opacity 800ms ease;
+   370→  animation: scrollPulse 3s ease-in-out infinite;
+   371→}
+   372→
+   373→.veris-scroll-hint.visible {
+   374→  opacity: 0.3;
+   375→}
+   376→
+   377→@keyframes scrollPulse {
+   378→  0%,
+   379→  100% {
+   380→    opacity: 0.3;
+   381→  }
+   382→  50% {
+   383→    opacity: 0.1;
+   384→  }
+   385→}
+   386→
+   387→/* ═══════════════════════════════════════════════════════════════════════════════
+   388→   SECTION NAVIGATION DOTS
+   389→   ═══════════════════════════════════════════════════════════════════════════════ */
+   390→
+   391→.veris-nav-dots {
+   392→  position: fixed;
+   393→  right: 2rem;
+   394→  top: 50%;
+   395→  transform: translateY(-50%);
+   396→  z-index: 50;
+   397→  display: flex;
+   398→  flex-direction: column;
+   399→  gap: 1rem;
+   400→  align-items: center;
+   401→}
+   402→
+   403→.veris-nav-dot {
+   404→  width: 6px;
+   405→  height: 6px;
+   406→  border-radius: 50%;
+   407→  border: none;
+   408→  padding: 0;
+   409→  cursor: pointer;
+   410→  background: currentColor;
+   411→  opacity: 0.15;
+   412→  transition: opacity 500ms ease, transform 500ms ease;
+   413→  pointer-events: auto;
+   414→}
+   415→
+   416→.veris-nav-dot:hover {
+   417→  opacity: 0.5;
+   418→}
+   419→
+   420→.veris-nav-dot.active {
+   421→  opacity: 0.7;
+   422→  transform: scale(1.6);
+   423→}
+   424→
+   425→/* ═══════════════════════════════════════════════════════════════════════════════
+   426→   GALLERY (Archive section override)
+   427→   ═══════════════════════════════════════════════════════════════════════════════ */
+   428→
+   429→.veris-phase-overlay--gallery {
+   430→  justify-content: flex-start;
+   431→  align-items: stretch;
+   432→  padding: 0;
+   433→  overflow-y: auto;
+   434→  overflow-x: hidden;
+   435→  touch-action: pan-y;
+   436→  -webkit-overflow-scrolling: touch;
+   437→}
+   438→
+   439→.veris-gallery-header {
+   440→  flex-shrink: 0;
+   441→  text-align: center;
+   442→  padding: clamp(4rem, 12vh, 8rem) 2rem 1.5rem;
+   443→}
+   444→
+   445→/* ── Gallery Tabs ──────────────────────────────────────────────────────────── */
+   446→
+   447→.veris-gallery-tabs {
+   448→  display: inline-flex;
+   449→  gap: 0;
+   450→  margin-bottom: 1.5rem;
+   451→  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+   452→}
+   453→
+   454→.veris-gallery-tab {
+   455→  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+   456→  font-size: 0.55rem;
+   457→  font-weight: 500;
+   458→  letter-spacing: 0.3em;
+   459→  text-transform: uppercase;
+   460→  background: none;
+   461→  border: none;
+   462→  color: var(--veris-fg);
+   463→  opacity: 0.25;
+   464→  cursor: pointer;
+   465→  padding: 0.6rem 1.2rem;
+   466→  transition: opacity 500ms ease;
+   467→  position: relative;
+   468→}
+   469→
+   470→.veris-gallery-tab:hover {
+   471→  opacity: 0.5;
+   472→}
+   473→
+   474→.veris-gallery-tab.active {
+   475→  opacity: 0.6;
+   476→}
+   477→
+   478→.veris-gallery-tab.active::after {
+   479→  content: "";
+   480→  position: absolute;
+   481→  bottom: -1px;
+   482→  left: 1.2rem;
+   483→  right: 1.2rem;
+   484→  height: 1px;
+   485→  background: var(--veris-fg);
+   486→  opacity: 0.5;
+   487→}
+   488→
+   489→/* ── Gallery Subtitle ──────────────────────────────────────────────────────── */
+   490→
+   491→.veris-gallery-subtitle {
+   492→  animation: galleryFadeIn 500ms ease both;
+   493→}
+   494→
+   495→@keyframes galleryFadeIn {
+   496→  from { opacity: 0; transform: translateY(4px); }
+   497→  to { opacity: 1; transform: translateY(0); }
+   498→}
+   499→
+   500→.veris-gallery-grid {
+   501→  flex: 1;
+   502→  display: grid;
+   503→  grid-template-columns: 1fr 1fr;
+   504→  gap: 2px;
+   505→  padding: 0 clamp(1rem, 4vw, 4rem);
+   506→  max-width: 1400px;
+   507→  width: 100%;
+   508→  margin: 0 auto;
+   509→}
+   510→
+   511→@media (max-width: 640px) {
+   512→  .veris-gallery-grid {
+   513→    grid-template-columns: 1fr;
+   514→  }
+   515→}
+   516→
+   517→/* ── Gallery Items ────────────────────────────────────────────────────────────── */
+   518→
+   519→.veris-gallery-item {
+   520→  position: relative;
+   521→  display: block;
+   522→  width: 100%;
+   523→  aspect-ratio: 4 / 3;
+   524→  overflow: hidden;
+   525→  cursor: pointer;
+   526→  background: rgba(128, 128, 128, 0.06);
+   527→  padding: 0;
+   528→  border: none;
+   529→  outline: none;
+   530→}
+   531→
+   532→.veris-gallery-item--full {
+   533→  grid-column: 1 / -1;
+   534→  aspect-ratio: 16 / 7;
+   535→}
+   536→
+   537→@media (max-width: 640px) {
+   538→  .veris-gallery-item {
+   539→    aspect-ratio: 3 / 2;
+   540→  }
+   541→  .veris-gallery-item--full {
+   542→    aspect-ratio: 4 / 3;
+   543→  }
+   544→}
+   545→
+   546→.veris-gallery-item img {
+   547→  width: 100%;
+   548→  height: 100%;
+   549→  object-fit: cover;
+   550→  display: block;
+   551→  opacity: 0.85;
+   552→  transition: opacity 600ms ease, transform 800ms cubic-bezier(0.25, 1, 0.5, 1);
+   553→  will-change: transform, opacity;
+   554→}
+   555→
+   556→.veris-gallery-item:hover img {
+   557→  opacity: 1;
+   558→  transform: scale(1.03);
+   559→}
+   560→
+   561→.veris-gallery-item:focus-visible img {
+   562→  opacity: 1;
+   563→  outline: 2px solid currentColor;
+   564→  outline-offset: -2px;
+   565→}
+   566→
+   567→/* ── Gallery Item Hover Overlay ──────────────────────────────────────────────── */
+   568→
+   569→.veris-gallery-item-overlay {
+   570→  position: absolute;
+   571→  inset: 0;
+   572→  display: flex;
+   573→  align-items: flex-end;
+   574→  justify-content: flex-end;
+   575→  padding: 0.75rem;
+   576→  opacity: 0;
+   577→  transition: opacity 500ms ease;
+   578→  pointer-events: none;
+   579→}
+   580→
+   581→.veris-gallery-item:hover .veris-gallery-item-overlay {
+   582→  opacity: 1;
+   583→}
+   584→
+   585→.veris-gallery-item-counter {
+   586→  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+   587→  font-size: 0.5rem;
+   588→  font-weight: 500;
+   589→  letter-spacing: 0.15em;
+   590→  opacity: 0.5;
+   591→  color: var(--veris-fg);
+   592→}
+   593→
+   594→/* ── Gallery Footer ──────────────────────────────────────────────────────────── */
+   595→
+   596→.veris-gallery-footer {
+   597→  flex-shrink: 0;
+   598→  text-align: center;
+   599→  padding: 2rem 2rem clamp(4rem, 10vh, 6rem);
+   600→}
+   601→
+   602→/* ═══════════════════════════════════════════════════════════════════════════════
+   603→   LIGHTBOX
+   604→   ═══════════════════════════════════════════════════════════════════════════════ */
+   605→
+   606→.veris-lightbox {
+   607→  position: fixed;
+   608→  inset: 0;
+   609→  z-index: 300;
+   610→  display: flex;
+   611→  align-items: center;
+   612→  justify-content: center;
+   613→  animation: lightboxIn 400ms cubic-bezier(0.25, 1, 0.5, 1) both;
+   614→}
+   615→
+   616→@keyframes lightboxIn {
+   617→  from { opacity: 0; }
+   618→  to { opacity: 1; }
+   619→}
+   620→
+   621→.veris-lightbox-backdrop {
+   622→  position: absolute;
+   623→  inset: 0;
+   624→  background: rgba(0, 0, 0, 0.92);
+   625→  backdrop-filter: blur(20px);
+   626→  -webkit-backdrop-filter: blur(20px);
+   627→}
+   628→
+   629→body.veris-light .veris-lightbox-backdrop {
+   630→  background: rgba(255, 255, 255, 0.92);
+   631→}
+   632→
+   633→.veris-lightbox-content {
+   634→  position: relative;
+   635→  z-index: 1;
+   636→  max-width: 90vw;
+   637→  max-height: 85vh;
+   638→  display: flex;
+   639→  align-items: center;
+   640→  justify-content: center;
+   641→}
+   642→
+   643→.veris-lightbox-img {
+   644→  max-width: 90vw;
+   645→  max-height: 85vh;
+   646→  width: auto;
+   647→  height: auto;
+   648→  object-fit: contain;
+   649→  display: block;
+   650→  animation: lightboxImgIn 500ms cubic-bezier(0.25, 1, 0.5, 1) 80ms both;
+   651→  border-radius: 2px;
+   652→}
+   653→
+   654→@keyframes lightboxImgIn {
+   655→  from {
+   656→    opacity: 0;
+   657→    transform: scale(0.96);
+   658→  }
+   659→  to {
+   660→    opacity: 1;
+   661→    transform: scale(1);
+   662→  }
+   663→}
+   664→
+   665→/* ── Lightbox Controls ────────────────────────────────────────────────────────── */
+   666→
+   667→.veris-lightbox-close,
+   668→.veris-lightbox-nav {
+   669→  position: absolute;
+   670→  z-index: 2;
+   671→  background: none;
+   672→  border: none;
+   673→  color: var(--veris-fg);
+   674→  cursor: pointer;
+   675→  opacity: 0.3;
+   676→  transition: opacity 300ms ease;
+   677→  padding: 0.75rem;
+   678→  display: flex;
+   679→  align-items: center;
+   680→  justify-content: center;
+   681→}
+   682→
+   683→.veris-lightbox-close:hover,
+   684→.veris-lightbox-nav:hover {
+   685→  opacity: 0.8;
+   686→}
+   687→
+   688→.veris-lightbox-close {
+   689→  top: 1.5rem;
+   690→  right: 1.5rem;
+   691→}
+   692→
+   693→.veris-lightbox-prev {
+   694→  left: clamp(0.5rem, 3vw, 2rem);
+   695→  top: 50%;
+   696→  transform: translateY(-50%);
+   697→}
+   698→
+   699→.veris-lightbox-next {
+   700→  right: clamp(0.5rem, 3vw, 2rem);
+   701→  top: 50%;
+   702→  transform: translateY(-50%);
+   703→}
+   704→
+   705→.veris-lightbox-counter {
+   706→  position: absolute;
+   707→  bottom: 1.5rem;
+   708→  left: 50%;
+   709→  transform: translateX(-50%);
+   710→  z-index: 2;
+   711→  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+   712→  font-size: 0.55rem;
+   713→  font-weight: 400;
+   714→  letter-spacing: 0.3em;
+   715→  opacity: 0.25;
+   716→  color: var(--veris-fg);
+   717→}
+   718→
+   719→/* ═══════════════════════════════════════════════════════════════════
+   720→   ABOUT SECTION
+   721→   ═══════════════════════════════════════════════════════════════════ */
+   722→
+   723→.veris-about-container {
+   724→  display: flex;
+   725→  flex-direction: column;
+   726→  align-items: center;
+   727→  gap: 2rem;
+   728→  max-width: 560px;
+   729→  width: 100%;
+   730→  text-align: center;
+   731→  padding: 2rem;
+   732→}
+   733→
+   734→.veris-about-photo-ring {
+   735→  width: clamp(80px, 14vw, 120px);
+   736→  height: clamp(80px, 14vw, 120px);
+   737→  border-radius: 50%;
+   738→  padding: 1.5px;
+   739→  background: linear-gradient(
+   740→    135deg,
+   741→    rgba(255, 255, 255, 0.25) 0%,
+   742→    rgba(255, 255, 255, 0.05) 100%
+   743→  );
+   744→  flex-shrink: 0;
+   745→  transition: background var(--veris-transition-duration) ease;
+   746→}
+   747→
+   748→body.veris-light .veris-about-photo-ring {
+   749→  background: linear-gradient(
+   750→    135deg,
+   751→    rgba(0, 0, 0, 0.18) 0%,
+   752→    rgba(0, 0, 0, 0.04) 100%
+   753→  );
+   754→}
+   755→
+   756→.veris-about-photo {
+   757→  width: 100%;
+   758→  height: 100%;
+   759→  border-radius: 50%;
+   760→  object-fit: cover;
+   761→  display: block;
+   762→  opacity: 0.9;
+   763→}
+   764→
+   765→.veris-about-label {
+   766→  font-size: 0.5rem;
+   767→  opacity: 0.35;
+   768→  letter-spacing: 0.4em;
+   769→}
+   770→
+   771→.veris-about-name {
+   772→  font-size: clamp(1.6rem, 4vw, 2.8rem);
+   773→  letter-spacing: 0.05em;
+   774→  line-height: 1.1;
+   775→}
+   776→
+   777→.veris-about-location {
+   778→  font-size: 0.5rem;
+   779→  opacity: 0.35;
+   780→  letter-spacing: 0.25em;
+   781→  margin-top: -0.75rem;
+   782→}
+   783→
+   784→.veris-about-bio {
+   785→  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+   786→  font-weight: 400;
+   787→  font-size: clamp(0.7rem, 1.4vw, 0.9rem);
+   788→  line-height: 1.8;
+   789→  opacity: 0.55;
+   790→  letter-spacing: 0.01em;
+   791→  text-transform: none;
+   792→  max-width: 480px;
+   793→}
+   794→
+   795→.veris-about-specialties {
+   796→  display: flex;
+   797→  flex-wrap: wrap;
+   798→  gap: 0.5rem;
+   799→  justify-content: center;
+   800→  margin-top: 0.5rem;
+   801→}
+   802→
+   803→.veris-about-tag {
+   804→  font-size: 0.45rem;
+   805→  opacity: 0.3;
+   806→  letter-spacing: 0.2em;
+   807→  padding: 0.4rem 0.8rem;
+   808→  border: 1px solid currentColor;
+   809→  border-radius: 100px;
+   810→  transition: opacity 500ms ease;
+   811→}
+   812→
+   813→.veris-about-tag:hover {
+   814→  opacity: 0.6;
+   815→}
+   816→
+   817→/* ═══════════════════════════════════════════════════════════════════
+   818→   DETAIL SECTION (Selected Works)
+   819→   ═══════════════════════════════════════════════════════════════════ */
+   820→
+   821→.veris-phase-overlay--detail {
+   822→  justify-content: flex-start;
+   823→  align-items: stretch;
+   824→  padding: 0;
+   825→  overflow-y: auto;
+   826→  overflow-x: hidden;
+   827→  touch-action: pan-y;
+   828→  -webkit-overflow-scrolling: touch;
+   829→}
+   830→
+   831→.veris-detail-header {
+   832→  flex-shrink: 0;
+   833→  text-align: center;
+   834→  padding: clamp(4rem, 12vh, 8rem) 2rem 2rem;
+   835→}
+   836→
+   837→.veris-detail-label {
+   838→  font-size: 0.5rem;
+   839→  opacity: 0.35;
+   840→  letter-spacing: 0.4em;
+   841→}
+   842→
+   843→.veris-detail-title {
+   844→  margin-top: 0.75rem;
+   845→}
+   846→
+   847→.veris-detail-grid {
+   848→  flex: 1;
+   849→  display: grid;
+   850→  grid-template-columns: 1fr 1fr 1fr;
+   851→  gap: 2px;
+   852→  padding: 0 clamp(1rem, 4vw, 4rem);
+   853→  max-width: 1400px;
+   854→  width: 100%;
+   855→  margin: 0 auto;
+   856→  align-content: start;
+   857→}
+   858→
+   859→@media (max-width: 768px) {
+   860→  .veris-detail-grid {
+   861→    grid-template-columns: 1fr 1fr;
+   862→  }
+   863→}
+   864→
+   865→@media (max-width: 480px) {
+   866→  .veris-detail-grid {
+   867→    grid-template-columns: 1fr;
+   868→  }
+   869→}
+   870→
+   871→/* ── Detail Card ─────────────────────────────────────────────────────── */
+   872→
+   873→.veris-detail-card {
+   874→  display: flex;
+   875→  flex-direction: column;
+   876→  overflow: hidden;
+   877→}
+   878→
+   879→.veris-detail-card-img {
+   880→  position: relative;
+   881→  aspect-ratio: 4 / 3;
+   882→  overflow: hidden;
+   883→  background: rgba(128, 128, 128, 0.06);
+   884→}
+   885→
+   886→.veris-detail-card-img img {
+   887→  width: 100%;
+   888→  height: 100%;
+   889→  object-fit: cover;
+   890→  display: block;
+   891→  opacity: 0.8;
+   892→  transition: opacity 600ms ease, transform 800ms cubic-bezier(0.25, 1, 0.5, 1);
+   893→}
+   894→
+   895→.veris-detail-card:hover .veris-detail-card-img img {
+   896→  opacity: 1;
+   897→  transform: scale(1.04);
+   898→}
+   899→
+   900→.veris-detail-card-info {
+   901→  padding: 1.2rem 0.5rem 1.5rem;
+   902→  display: flex;
+   903→  flex-direction: column;
+   904→  gap: 0.3rem;
+   905→}
+   906→
+   907→.veris-detail-card-category {
+   908→  font-size: 0.4rem;
+   909→  opacity: 0.3;
+   910→  letter-spacing: 0.3em;
+   911→}
+   912→
+   913→.veris-detail-card-title {
+   914→  font-size: clamp(0.9rem, 1.8vw, 1.2rem);
+   915→  letter-spacing: 0.03em;
+   916→  line-height: 1.2;
+   917→}
+   918→
+   919→.veris-detail-card-desc {
+   920→  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+   921→  font-weight: 400;
+   922→  font-size: clamp(0.6rem, 1vw, 0.75rem);
+   923→  line-height: 1.6;
+   924→  opacity: 0.45;
+   925→  letter-spacing: 0.01em;
+   926→  text-transform: none;
+   927→  margin-top: 0.25rem;
+   928→}
+   929→
+   930→.veris-detail-footer {
+   931→  flex-shrink: 0;
+   932→  text-align: center;
+   933→  padding: 2rem 2rem clamp(4rem, 10vh, 6rem);
+   934→}
+   935→
+   936→/* ═══════════════════════════════════════════════════════════════════
+   937→   COMMISSION SECTION (scrollable)
+   938→   ═══════════════════════════════════════════════════════════════════ */
+   939→
+   940→.veris-phase-overlay--commission {
+   941→  justify-content: flex-start;
+   942→  align-items: stretch;
+   943→  padding: 0;
+   944→  overflow-y: auto;
+   945→  overflow-x: hidden;
+   946→  touch-action: pan-y;
+   947→  -webkit-overflow-scrolling: touch;
+   948→}
+   949→
+   950→.veris-commission-inner {
+   951→  max-width: 720px;
+   952→  width: 100%;
+   953→  margin: 0 auto;
+   954→  padding: clamp(4rem, 12vh, 8rem) 2rem clamp(4rem, 10vh, 6rem);
+   955→  display: flex;
+   956→  flex-direction: column;
+   957→  align-items: center;
+   958→  gap: 3rem;
+   959→}
+   960→
+   961→.veris-commission-header {
+   962→  text-align: center;
+   963→  display: flex;
+   964→  flex-direction: column;
+   965→  align-items: center;
+   966→  gap: 0.75rem;
+   967→}
+   968→
+   969→.veris-commission-label {
+   970→  font-size: 0.5rem;
+   971→  opacity: 0.35;
+   972→  letter-spacing: 0.4em;
+   973→}
+   974→
+   975→.veris-commission-heading {
+   976→  font-size: clamp(1.6rem, 4vw, 3rem);
+   977→  letter-spacing: 0.03em;
+   978→  line-height: 1.15;
+   979→  opacity: 0.9;
+   980→}
+   981→
+   982→.veris-commission-sub {
+   983→  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+   984→  font-weight: 400;
+   985→  font-size: clamp(0.7rem, 1.3vw, 0.85rem);
+   986→  line-height: 1.7;
+   987→  opacity: 0.5;
+   988→  letter-spacing: 0.01em;
+   989→  text-transform: none;
+   990→  max-width: 420px;
+   991→  text-align: center;
+   992→}
+   993→
+   994→/* ── Services ────────────────────────────────────────────────────────── */
+   995→
+   996→.veris-services {
+   997→  width: 100%;
+   998→  display: flex;
+   999→  flex-direction: column;
+  1000→  gap: 1.5rem;
+  1001→}
+  1002→
+  1003→.veris-services-title {
+  1004→  font-size: 0.45rem;
+  1005→  opacity: 0.25;
+  1006→  letter-spacing: 0.4em;
+  1007→  text-align: center;
+  1008→}
+  1009→
+  1010→.veris-services-grid {
+  1011→  display: grid;
+  1012→  grid-template-columns: 1fr 1fr 1fr;
+  1013→  gap: 1px;
+  1014→}
+  1015→
+  1016→@media (max-width: 600px) {
+  1017→  .veris-services-grid {
+  1018→    grid-template-columns: 1fr;
+  1019→  }
+  1020→}
+  1021→
+  1022→.veris-service-card {
+  1023→  padding: 1.5rem;
+  1024→  display: flex;
+  1025→  flex-direction: column;
+  1026→  gap: 0.6rem;
+  1027→  border: 1px solid rgba(128, 128, 128, 0.08);
+  1028→  transition: border-color 500ms ease;
+  1029→}
+  1030→
+  1031→.veris-service-card:hover {
+  1032→  border-color: rgba(128, 128, 128, 0.2);
+  1033→}
+  1034→
+  1035→.veris-service-card-title {
+  1036→  font-size: clamp(0.8rem, 1.5vw, 1rem);
+  1037→  letter-spacing: 0.03em;
+  1038→  line-height: 1.2;
+  1039→}
+  1040→
+  1041→.veris-service-card-desc {
+  1042→  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  1043→  font-weight: 400;
+  1044→  font-size: clamp(0.6rem, 1vw, 0.7rem);
+  1045→  line-height: 1.6;
+  1046→  opacity: 0.4;
+  1047→  letter-spacing: 0.01em;
+  1048→  text-transform: none;
+  1049→}
+  1050→
+  1051→/* ── Process Steps ────────────────────────────────────────────────────── */
+  1052→
+  1053→.veris-process {
+  1054→  width: 100%;
+  1055→  display: flex;
+  1056→  flex-direction: column;
+  1057→  gap: 1.5rem;
+  1058→}
+  1059→
+  1060→.veris-process-title {
+  1061→  font-size: 0.45rem;
+  1062→  opacity: 0.25;
+  1063→  letter-spacing: 0.4em;
+  1064→  text-align: center;
+  1065→}
+  1066→
+  1067→.veris-process-steps {
+  1068→  display: grid;
+  1069→  grid-template-columns: 1fr 1fr 1fr 1fr;
+  1070→  gap: 0;
+  1071→}
+  1072→
+  1073→@media (max-width: 600px) {
+  1074→  .veris-process-steps {
+  1075→    grid-template-columns: 1fr;
+  1076→    gap: 1rem;
+  1077→  }
+  1078→}
+  1079→
+  1080→.veris-process-step {
+  1081→  padding: 1.2rem;
+  1082→  text-align: center;
+  1083→  display: flex;
+  1084→  flex-direction: column;
+  1085→  align-items: center;
+  1086→  gap: 0.5rem;
+  1087→  position: relative;
+  1088→}
+  1089→
+  1090→.veris-process-step:not(:last-child)::after {
+  1091→  content: "";
+  1092→  position: absolute;
+  1093→  right: 0;
+  1094→  top: 25%;
+  1095→  height: 1px;
+  1096→  width: 1px;
+  1097→  background: rgba(128, 128, 128, 0.1);
+  1098→}
+  1099→
+  1100→@media (max-width: 600px) {
+  1101→  .veris-process-step:not(:last-child)::after {
+  1102→    display: none;
+  1103→  }
+  1104→}
+  1105→
+  1106→.veris-process-step-num {
+  1107→  font-family: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+  1108→  font-weight: 600;
+  1109→  font-size: 1.4rem;
+  1110→  opacity: 0.2;
+  1111→  line-height: 1;
+  1112→}
+  1113→
+  1114→.veris-process-step-name {
+  1115→  font-size: 0.5rem;
+  1116→  opacity: 0.6;
+  1117→  letter-spacing: 0.15em;
+  1118→}
+  1119→
+  1120→.veris-process-step-desc {
+  1121→  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  1122→  font-weight: 400;
+  1123→  font-size: 0.55rem;
+  1124→  opacity: 0.35;
+  1125→  letter-spacing: 0.01em;
+  1126→  text-transform: none;
+  1127→  line-height: 1.5;
+  1128→}
+  1129→
+  1130→/* ── Contact Form ─────────────────────────────────────────────────────── */
+  1131→
+  1132→.veris-form {
+  1133→  width: 100%;
+  1134→  max-width: 480px;
+  1135→  display: flex;
+  1136→  flex-direction: column;
+  1137→  gap: 1rem;
+  1138→}
+  1139→
+  1140→.veris-form-row {
+  1141→  display: grid;
+  1142→  grid-template-columns: 1fr 1fr;
+  1143→  gap: 1rem;
+  1144→}
+  1145→
+  1146→@media (max-width: 480px) {
+  1147→  .veris-form-row {
+  1148→    grid-template-columns: 1fr;
+  1149→  }
+  1150→}
+  1151→
+  1152→.veris-form-group {
+  1153→  display: flex;
+  1154→  flex-direction: column;
+  1155→  gap: 0.4rem;
+  1156→}
+  1157→
+  1158→.veris-form-label {
+  1159→  font-size: 0.4rem;
+  1160→  opacity: 0.3;
+  1161→  letter-spacing: 0.2em;
+  1162→}
+  1163→
+  1164→.veris-form-input,
+  1165→.veris-form-select,
+  1166→.veris-form-textarea {
+  1167→  width: 100%;
+  1168→  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  1169→  font-weight: 400;
+  1170→  font-size: 0.7rem;
+  1171→  letter-spacing: 0.02em;
+  1172→  color: var(--veris-fg);
+  1173→  background: rgba(128, 128, 128, 0.06);
+  1174→  border: 1px solid rgba(128, 128, 128, 0.1);
+  1175→  border-radius: 2px;
+  1176→  padding: 0.7rem 0.8rem;
+  1177→  outline: none;
+  1178→  transition: border-color 500ms ease, background 500ms ease;
+  1179→  -webkit-appearance: none;
+  1180→  appearance: none;
+  1181→}
+  1182→
+  1183→.veris-form-input::placeholder,
+  1184→.veris-form-textarea::placeholder {
+  1185→  color: var(--veris-fg);
+  1186→  opacity: 0.25;
+  1187→}
+  1188→
+  1189→.veris-form-input:focus,
+  1190→.veris-form-select:focus,
+  1191→.veris-form-textarea:focus {
+  1192→  border-color: rgba(128, 128, 128, 0.3);
+  1193→  background: rgba(128, 128, 128, 0.1);
+  1194→}
+  1195→
+  1196→.veris-form-select {
+  1197→  cursor: pointer;
+  1198→  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23888' stroke-width='1'/%3E%3C/svg%3E");
+  1199→  background-repeat: no-repeat;
+  1200→  background-position: right 0.8rem center;
+  1201→  padding-right: 2rem;
+  1202→}
+  1203→
+  1204→.veris-form-select option {
+  1205→  background: #111;
+  1206→  color: #f5f5f5;
+  1207→}
+  1208→
+  1209→body.veris-light .veris-form-select option {
+  1210→  background: #f5f5f5;
+  1211→  color: #111;
+  1212→}
+  1213→
+  1214→.veris-form-textarea {
+  1215→  min-height: 100px;
+  1216→  resize: vertical;
+  1217→  line-height: 1.6;
+  1218→}
+  1219→
+  1220→.veris-form-submit {
+  1221→  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  1222→  font-weight: 500;
+  1223→  font-size: 0.5rem;
+  1224→  letter-spacing: 0.25em;
+  1225→  text-transform: uppercase;
+  1226→  color: var(--veris-bg);
+  1227→  background: var(--veris-fg);
+  1228→  border: none;
+  1229→  border-radius: 2px;
+  1230→  padding: 0.9rem 2rem;
+  1231→  cursor: pointer;
+  1232→  transition: opacity 500ms ease, transform 300ms ease;
+  1233→  align-self: flex-start;
+  1234→  opacity: 0.85;
+  1235→}
+  1236→
+  1237→.veris-form-submit:hover {
+  1238→  opacity: 1;
+  1239→  transform: translateY(-1px);
+  1240→}
+  1241→
+  1242→.veris-form-submit:active {
+  1243→  transform: translateY(0);
+  1244→}
+  1245→
+  1246→/* ── Commission Footer ─────────────────────────────────────────────────── */
+  1247→
+  1248→.veris-commission-footer {
+  1249→  width: 100%;
+  1250→  display: flex;
+  1251→  flex-direction: column;
+  1252→  align-items: center;
+  1253→  gap: 1.25rem;
+  1254→  padding-top: 2rem;
+  1255→  border-top: 1px solid rgba(128, 128, 128, 0.08);
+  1256→}
+  1257→
+  1258→.veris-commission-links {
+  1259→  display: flex;
+  1260→  gap: 2rem;
+  1261→  flex-wrap: wrap;
+  1262→  justify-content: center;
+  1263→}
+  1264→
+  1265→.veris-commission-link {
+  1266→  display: inline-flex;
+  1267→  align-items: center;
+  1268→  gap: 0.5rem;
+  1269→  font-size: 0.45rem;
+  1270→  font-weight: 500;
+  1271→  letter-spacing: 0.15em;
+  1272→  text-transform: uppercase;
+  1273→  opacity: 0.35;
+  1274→  color: var(--veris-fg);
+  1275→  text-decoration: none;
+  1276→  transition: opacity 500ms ease;
+  1277→  padding: 0.4rem 0;
+  1278→}
+  1279→
+  1280→.veris-commission-link:hover {
+  1281→  opacity: 0.7;
+  1282→}
+  1283→
+  1284→.veris-commission-link svg {
+  1285→  flex-shrink: 0;
+  1286→  opacity: 0.6;
+  1287→}
+  1288→
+  1289→.veris-commission-location {
+  1290→  font-size: 0.4rem;
+  1291→  opacity: 0.2;
+  1292→  letter-spacing: 0.3em;
+  1293→}
+  1294→
+  1295→/* ═══════════════════════════════════════════════════════════════════
+  1296→   REDUCED MOTION
+  1297→   ═══════════════════════════════════════════════════════════════════ */
+  1298→
+  1299→@media (prefers-reduced-motion: reduce) {
+  1300→  * {
+  1301→    animation-duration: 0.01ms !important;
+  1302→    animation-iteration-count: 1 !important;
+  1303→    transition-duration: 0.01ms !important;
+  1304→  }
+  1305→
+  1306→  .veris-preloader.v-entering {
+  1307→    animation: none;
+  1308→    opacity: 0;
+  1309→  }
+  1310→
+  1311→  .odometer-digit-inner {
+  1312→    transition: none;
+  1313→  }
+  1314→
+  1315→  .veris-lightbox,
+  1316→  .veris-lightbox-img {
+  1317→    animation: none;
+  1318→  }
+  1319→}
