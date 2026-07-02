@@ -623,7 +623,7 @@ export default function Home() {
             className="veris-detail-title font-display"
             style={{
               fontSize: "clamp(1.2rem, 3vw, 2.2rem)",
-              opacity: 0.15,
+              opacity: 0.3,
             }}
           >
             Curated Selection
@@ -708,95 +708,230 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── Section: CONTACT ────────────────────────────────────────────────── */}
+      {/* ── Section: CONTACT — Commission Page ──────────────────────────────── */}
       <div
-        className="veris-phase-overlay"
+        className="veris-phase-overlay veris-phase-overlay--commission"
         style={{
           opacity: showContact ? 1 : 0,
           pointerEvents: showContact ? "auto" : "none",
         }}
         role="region"
-        aria-label="Contact"
+        aria-label="Commission"
       >
-        <div className="veris-contact-container">
-          <div className="veris-contact-label font-ui">Commission</div>
-          <h2
-            className="veris-contact-heading font-display"
-            style={{
-              fontSize: "clamp(1.6rem, 4vw, 3.2rem)",
-            }}
+        <div className="veris-commission-inner">
+          {/* Header */}
+          <header className="veris-commission-header">
+            <div className="veris-commission-label font-ui">Commission</div>
+            <h2 className="veris-commission-heading font-display">
+              Let&apos;s Create
+              <br />
+              Together
+            </h2>
+            <p className="veris-commission-sub">
+              Available for commercial, editorial, and wedding commissions.
+              Every project begins with a conversation.
+            </p>
+          </header>
+
+          {/* Services */}
+          <section className="veris-services" aria-label="Services">
+            <div className="veris-services-title font-ui">Services</div>
+            <div className="veris-services-grid">
+              <div className="veris-service-card">
+                <h3 className="veris-service-card-title font-display">
+                  Commercial
+                </h3>
+                <p className="veris-service-card-desc">
+                  Product, branding, and editorial photography for businesses.
+                  Clean, intentional imagery that elevates your brand.
+                </p>
+              </div>
+              <div className="veris-service-card">
+                <h3 className="veris-service-card-title font-display">
+                  Weddings
+                </h3>
+                <p className="veris-service-card-desc">
+                  Documentary-style wedding coverage capturing authentic moments
+                  and the quiet poetry of your celebration.
+                </p>
+              </div>
+              <div className="veris-service-card">
+                <h3 className="veris-service-card-title font-display">
+                  Portraits
+                </h3>
+                <p className="veris-service-card-desc">
+                  Personal and editorial portraits in studio or on location.
+                  Focused on natural light and genuine expression.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Process */}
+          <section className="veris-process" aria-label="Process">
+            <div className="veris-process-title font-ui">Process</div>
+            <div className="veris-process-steps">
+              <div className="veris-process-step">
+                <span className="veris-process-step-num font-display">01</span>
+                <span className="veris-process-step-name font-ui">Inquiry</span>
+                <p className="veris-process-step-desc">
+                  Share your vision, timeline, and budget through the form below.
+                </p>
+              </div>
+              <div className="veris-process-step">
+                <span className="veris-process-step-num font-display">02</span>
+                <span className="veris-process-step-name font-ui">Consult</span>
+                <p className="veris-process-step-desc">
+                  A call to align on creative direction, logistics, and deliverables.
+                </p>
+              </div>
+              <div className="veris-process-step">
+                <span className="veris-process-step-num font-display">03</span>
+                <span className="veris-process-step-name font-ui">Shoot</span>
+                <p className="veris-process-step-desc">
+                  The session itself — focused, intentional, and collaborative.
+                </p>
+              </div>
+              <div className="veris-process-step">
+                <span className="veris-process-step-num font-display">04</span>
+                <span className="veris-process-step-name font-ui">Deliver</span>
+                <p className="veris-process-step-desc">
+                  Curated, retouched gallery delivered within the agreed timeline.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Contact Form */}
+          <form
+            className="veris-form"
+            onSubmit={(e) => e.preventDefault()}
+            aria-label="Commission inquiry"
           >
-            Let&apos;s Create
-            <br />
-            Together
-          </h2>
-          <p className="veris-contact-bio">
-            Available for commercial, editorial, and wedding commissions.
-            Every project begins with a conversation.
-          </p>
-          <div className="veris-contact-links">
-            <a
-              href="mailto:hello@verisvisuals.com"
-              className="veris-contact-link font-ui"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                aria-hidden="true"
+            <div className="veris-form-row">
+              <div className="veris-form-group">
+                <label className="veris-form-label font-ui" htmlFor="comm-name">
+                  Name
+                </label>
+                <input
+                  id="comm-name"
+                  type="text"
+                  className="veris-form-input"
+                  placeholder="Your name"
+                  autoComplete="name"
+                />
+              </div>
+              <div className="veris-form-group">
+                <label className="veris-form-label font-ui" htmlFor="comm-email">
+                  Email
+                </label>
+                <input
+                  id="comm-email"
+                  type="email"
+                  className="veris-form-input"
+                  placeholder="your@email.com"
+                  autoComplete="email"
+                />
+              </div>
+            </div>
+            <div className="veris-form-group">
+              <label className="veris-form-label font-ui" htmlFor="comm-type">
+                Project Type
+              </label>
+              <select id="comm-type" className="veris-form-select font-ui">
+                <option value="" disabled>
+                  Select a category
+                </option>
+                <option value="commercial">Commercial / Branding</option>
+                <option value="wedding">Wedding</option>
+                <option value="portrait">Portrait / Personal</option>
+                <option value="editorial">Editorial</option>
+                <option value="product">Product Photography</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div className="veris-form-group">
+              <label className="veris-form-label font-ui" htmlFor="comm-msg">
+                Message
+              </label>
+              <textarea
+                id="comm-msg"
+                className="veris-form-textarea"
+                placeholder="Tell me about your project, timeline, and any references..."
+                rows={4}
+              />
+            </div>
+            <button type="submit" className="veris-form-submit font-ui">
+              Send Inquiry
+            </button>
+          </form>
+
+          {/* Footer Links */}
+          <footer className="veris-commission-footer">
+            <div className="veris-commission-links">
+              <a
+                href="mailto:hello@verisvisuals.com"
+                className="veris-commission-link font-ui"
               >
-                <rect x="2" y="4" width="20" height="16" rx="2" />
-                <polyline points="22,4 12,13 2,4" />
-              </svg>
-              hello@verisvisuals.com
-            </a>
-            <a
-              href="https://instagram.com/verisvisuals"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="veris-contact-link font-ui"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                aria-hidden="true"
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  aria-hidden="true"
+                >
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <polyline points="22,4 12,13 2,4" />
+                </svg>
+                hello@verisvisuals.com
+              </a>
+              <a
+                href="https://instagram.com/verisvisuals"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="veris-commission-link font-ui"
               >
-                <rect x="2" y="2" width="20" height="20" rx="5" />
-                <circle cx="12" cy="12" r="5" />
-                <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
-              </svg>
-              @verisvisuals
-            </a>
-            <a
-              href="https://wa.me/919876543210"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="veris-contact-link font-ui"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                aria-hidden="true"
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  aria-hidden="true"
+                >
+                  <rect x="2" y="2" width="20" height="20" rx="5" />
+                  <circle cx="12" cy="12" r="5" />
+                  <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+                </svg>
+                @verisvisuals
+              </a>
+              <a
+                href="https://wa.me/919876543210"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="veris-commission-link font-ui"
               >
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-              </svg>
-              WhatsApp
-            </a>
-          </div>
-          <div className="veris-contact-location font-ui">
-            Based in Mumbai, India
-          </div>
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  aria-hidden="true"
+                >
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                </svg>
+                WhatsApp
+              </a>
+            </div>
+            <div className="veris-commission-location font-ui">
+              Based in Mumbai, India
+            </div>
+          </footer>
         </div>
       </div>
 

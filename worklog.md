@@ -177,3 +177,33 @@ Stage Summary:
 - Theme toggle works, mobile responsive (390x844), 5 nav dots rendered
 - ESLint: 0 errors, 0 warnings
 - Zero runtime JS errors in browser
+
+---
+Task ID: 8
+Agent: Main Coordinator
+Task: Fix issues + build full Commission page
+
+Work Log:
+- Fixed camera.resize runtime error: Added missing resize() method to VerisCamera class (updates aspect ratio + projection matrix on window resize)
+- Added missing ABOUT camera target to SECTION_CAMERA_TARGETS in app.ts
+- Improved text visibility across all sections:
+  - About: label 0.2→0.35, location 0.2→0.35, bio 0.4→0.55, tags 0.2→0.3 (hover 0.45→0.6)
+  - Detail: label 0.2→0.35, title 0.15→0.3, card category 0.15→0.3, card desc 0.3→0.45
+- Replaced simple Contact section with full Commission page:
+  - Header: "Commission" label + "Let's Create Together" heading + description
+  - Services: 3-column grid (Commercial, Weddings, Portraits) with hover borders
+  - Process: 4-step flow (Inquiry → Consult → Shoot → Deliver) with numbered steps
+  - Contact form: Name + Email (side-by-side), Project Type dropdown (6 options), Message textarea, Send Inquiry button
+  - Footer: email/Instagram/WhatsApp links + "Based in Mumbai, India"
+- Made Commission section scrollable (overflow-y: auto, touch-action: pan-y)
+- Added veris-phase-overlay--commission to scrollable overlay selector
+- ~200 lines of CSS for commission page (services, process, form, footer)
+- All elements theme-aware (CSS variables)
+
+Stage Summary:
+- Files modified: camera.ts, app.ts, scroll.ts, page.tsx, globals.css
+- camera.resize error: FIXED (zero console errors on resize)
+- All text opacities improved for readability while maintaining luxury aesthetic
+- Commission page: VLM verified all 7 key elements visible
+- ESLint: 0 errors, 0 warnings
+- Mobile responsive verified (390x844)

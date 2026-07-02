@@ -234,6 +234,18 @@ export class VerisCamera {
     };
   }
 
+  /**
+   * Update the camera aspect ratio and projection matrix on resize.
+   * @param width  - New viewport width in CSS pixels.
+   * @param height - New viewport height in CSS pixels.
+   */
+  resize(width: number, height: number): void {
+    if (!this.camera) return;
+    const aspect = width > 0 && height > 0 ? width / height : 1;
+    this.camera.aspect = aspect;
+    this.camera.updateProjectionMatrix();
+  }
+
   /** Clean up GSAP tweens and release references. */
   dispose(): void {
     gsap.killTweensOf(this.baseTarget);

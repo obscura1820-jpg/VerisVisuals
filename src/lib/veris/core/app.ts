@@ -58,6 +58,10 @@ const SECTION_CAMERA_TARGETS: Record<
     position: { x: 0, y: 1.2, z: 8 },
     lookAt: { x: 0, y: 1, z: 0 },
   },
+  [TimelineState.ABOUT]: {
+    position: { x: -0.5, y: 1.4, z: 7 },
+    lookAt: { x: 0, y: 1.1, z: 0 },
+  },
   [TimelineState.ARCHIVE]: {
     position: { x: 0, y: 1.5, z: 6 },
     lookAt: { x: 0, y: 1.2, z: -2 },

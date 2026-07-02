@@ -34,7 +34,7 @@ const MOMENTUM_DECAY = 0.93;
 const MOMENTUM_MIN_VELOCITY = 0.00005;
 
 /** CSS selectors for overlays that have their own internal scroll. */
-const SCROLLABLE_OVERLAY_SELECTOR = '.veris-phase-overlay--gallery, .veris-phase-overlay--detail';
+const SCROLLABLE_OVERLAY_SELECTOR = '.veris-phase-overlay--gallery, .veris-phase-overlay--detail, .veris-phase-overlay--commission';
 
 /** Number of recent (Y, time) samples for velocity calculation. */
 const VELOCITY_SAMPLE_SIZE = 5;
