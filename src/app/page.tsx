@@ -512,7 +512,7 @@ export default function Home() {
             ))}
           </nav>
           <div className="veris-gallery-subtitle">
-            <span className="font-display" style={{ fontSize: "clamp(1rem, 2.5vw, 1.6rem)", opacity: 0.2 }}>
+            <span className="font-display" style={{ fontSize: "clamp(1rem, 2.5vw, 1.6rem)", opacity: 0.4 }}>
               {currentCategory.subtitle}
             </span>
           </div>
@@ -542,7 +542,7 @@ export default function Home() {
         </div>
 
         <div className="veris-gallery-footer">
-          <span className="font-ui" style={{ fontSize: "0.5rem", opacity: 0.15, letterSpacing: "0.3em" }}>
+          <span className="font-ui" style={{ fontSize: "0.5rem", opacity: 0.3, letterSpacing: "0.3em" }}>
             {currentCategory.footer}
           </span>
         </div>
@@ -623,7 +623,7 @@ export default function Home() {
             className="veris-detail-title font-display"
             style={{
               fontSize: "clamp(1.2rem, 3vw, 2.2rem)",
-              opacity: 0.3,
+              opacity: 0.5,
             }}
           >
             Curated Selection
@@ -699,7 +699,7 @@ export default function Home() {
             className="font-ui"
             style={{
               fontSize: "0.5rem",
-              opacity: 0.15,
+              opacity: 0.3,
               letterSpacing: "0.3em",
             }}
           >
