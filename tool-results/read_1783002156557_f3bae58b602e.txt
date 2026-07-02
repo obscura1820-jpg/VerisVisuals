@@ -1,0 +1,977 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useRef, useState } from "react";
+     4→import { VerisApp } from "@/lib/veris/core/app";
+     5→import { VerisEvent } from "@/lib/veris/core/event-bus";
+     6→import { TimelineState } from "@/lib/veris/core/timeline";
+     7→import { DEBUG } from "@/lib/veris/core/config";
+     8→
+     9→/* ═══════════════════════════════════════════════════════════════════════════════
+    10→   ODOMETER COUNTER
+    11→   ═══════════════════════════════════════════════════════════════════════════════ */
+    12→
+    13→function OdometerDigit({ digit }: { digit: number }) {
+    14→  return (
+    15→    <span className="odometer-digit" aria-hidden="true">
+    16→      <span
+    17→        className="odometer-digit-inner"
+    18→        style={{ transform: `translateY(-${digit * 10}%)` }}
+    19→      >
+    20→        {Array.from({ length: 10 }, (_, i) => (
+    21→          <span key={i}>{i}</span>
+    22→        ))}
+    23→      </span>
+    24→    </span>
+    25→  );
+    26→}
+    27→
+    28→function OdometerCounter({ value }: { value: number }) {
+    29→  const pct = Math.max(0, Math.min(100, Math.round(value * 100)));
+    30→  const hundreds = Math.floor(pct / 100);
+    31→  const tens = Math.floor((pct % 100) / 10);
+    32→  const ones = pct % 10;
+    33→
+    34→  return (
+    35→    <span
+    36→      className="font-display inline-flex items-baseline"
+    37→      style={{ fontSize: "clamp(2rem, 6vw, 5rem)" }}
+    38→      aria-label={`${pct}%`}
+    39→      role="status"
+    40→    >
+    41→      <OdometerDigit digit={hundreds} />
+    42→      <OdometerDigit digit={tens} />
+    43→      <OdometerDigit digit={ones} />
+    44→      <span
+    45→        style={{
+    46→          fontSize: "0.5em",
+    47→          marginLeft: "0.15em",
+    48→          opacity: 0.6,
+    49→          fontWeight: 400,
+    50→          fontFamily: "var(--font-inter)",
+    51→          letterSpacing: "0.1em",
+    52→        }}
+    53→      >
+    54→        %
+    55→      </span>
+    56→    </span>
+    57→  );
+    58→}
+    59→
+    60→/* ═══════════════════════════════════════════════════════════════════════════════
+    61→   DEBUG OVERLAY — PRD 2 requirement
+    62→   ═══════════════════════════════════════════════════════════════════════════════ */
+    63→
+    64→function DebugOverlay({ appRef }: { appRef: React.RefObject<VerisApp | null> }) {
+    65→  const [stats, setStats] = useState<{
+    66→    fps: number;
+    67→    drawCalls: number;
+    68→    triangles: number;
+    69→    memory: { geometry: number; textures: number };
+    70→    qualityLevel: number;
+    71→    camera: { x: number; y: number; z: number };
+    72→  } | null>(null);
+    73→
+    74→  useEffect(() => {
+    75→    if (!DEBUG) return;
+    76→    const interval = setInterval(() => {
+    77→      if (appRef.current) {
+    78→        setStats(appRef.current.getPerformanceStats());
+    79→      }
+    80→    }, 250);
+    81→    return () => clearInterval(interval);
+    82→  }, [appRef]);
+    83→
+    84→  if (!DEBUG || !stats) return null;
+    85→
+    86→  return (
+    87→    <div
+    88→      style={{
+    89→        position: "fixed",
+    90→        top: "0.75rem",
+    91→        left: "0.75rem",
+    92→        zIndex: 200,
+    93→        fontFamily: "monospace",
+    94→        fontSize: "0.6rem",
+    95→        lineHeight: 1.6,
+    96→        color: "#00ff88",
+    97→        background: "rgba(0,0,0,0.6)",
+    98→        padding: "0.5rem 0.75rem",
+    99→        borderRadius: "4px",
+   100→        pointerEvents: "none",
+   101→        whiteSpace: "pre",
+   102→        opacity: 0.85,
+   103→      }}
+   104→    >
+   105→      {`FPS: ${stats.fps}
+   106→Draw: ${stats.drawCalls}
+   107→Tris: ${stats.triangles.toLocaleString()}
+   108→Geo: ${stats.memory.geometry}  Tex: ${stats.memory.textures}
+   109→Quality: ${stats.qualityLevel}
+   110→Cam: ${stats.camera.x.toFixed(2)}, ${stats.camera.y.toFixed(2)}, ${stats.camera.z.toFixed(2)}`}
+   111→    </div>
+   112→  );
+   113→}
+   114→
+   115→/* ═══════════════════════════════════════════════════════════════════════════════
+   116→   GALLERY DATA
+   117→   ═══════════════════════════════════════════════════════════════════════════════ */
+   118→
+   119→type GalleryCategory = {
+   120→  id: string;
+   121→  label: string;
+   122→  subtitle: string;
+   123→  footer: string;
+   124→  works: readonly { src: string; alt: string; span: "full" | "half" }[];
+   125→};
+   126→
+   127→const GALLERY_CATEGORIES: GalleryCategory[] = [
+   128→  {
+   129→    id: "commercial",
+   130→    label: "Commercial",
+   131→    subtitle: "Product & Brand Photography",
+   132→    footer: "5 Works \u00b7 JRL",
+   133→    works: [
+   134→      {
+   135→        src: "/gallery/CH_F0033.jpg",
+   136→        alt: "White JRL grooming tools arranged on a minimalist gray pedestal",
+   137→        span: "full",
+   138→      },
+   139→      {
+   140→        src: "/gallery/CH_F0045.jpg",
+   141→        alt: "JRL clippers and shaver on a white pedestal, soft gray background",
+   142→        span: "half",
+   143→      },
+   144→      {
+   145→        src: "/gallery/CH_F0045-1.png",
+   146→        alt: "JRL grooming tools on light gray pedestal, warm beige background",
+   147→        span: "half",
+   148→      },
+   149→      {
+   150→        src: "/gallery/CH_F5208.jpg",
+   151→        alt: "Two black JRL hair clippers on a matte black background",
+   152→        span: "half",
+   153→      },
+   154→      {
+   155→        src: "/gallery/CH_F6290.jpg",
+   156→        alt: "Two sleek black hair dryers against a dark gradient background",
+   157→        span: "half",
+   158→      },
+   159→    ],
+   160→  },
+   161→  {
+   162→    id: "weddings",
+   163→    label: "Weddings",
+   164→    subtitle: "Portrait & Ceremony",
+   165→    footer: "8 Works",
+   166→    works: [
+   167→      {
+   168→        src: "/gallery/104A0939.jpg",
+   169→        alt: "Newlywed couple in traditional Indian attire embracing outdoors in soft golden light",
+   170→        span: "full",
+   171→      },
+   172→      {
+   173→        src: "/gallery/104A0949.jpg",
+   174→        alt: "Wedding couple standing together in a sunlit open field with flowing veil",
+   175→        span: "half",
+   176→      },
+   177→      {
+   178→        src: "/gallery/104A0953.jpg",
+   179→        alt: "Groom kissing the bride\u2019s cheek in a sunlit field with intimate embrace",
+   180→        span: "half",
+   181→      },
+   182→      {
+   183→        src: "/gallery/104A0975.jpg",
+   184→        alt: "Bride placing a garland on the groom during a traditional Indian wedding ceremony",
+   185→        span: "full",
+   186→      },
+   187→      {
+   188→        src: "/gallery/104A1292.jpg",
+   189→        alt: "Wedding couple in traditional attire sharing a candid moment in golden outdoor light",
+   190→        span: "half",
+   191→      },
+   192→      {
+   193→        src: "/gallery/104A1310.jpg",
+   194→        alt: "Bride and groom framed by natural scenery during their outdoor wedding portrait session",
+   195→        span: "half",
+   196→      },
+   197→      {
+   198→        src: "/gallery/104A1312.jpg",
+   199→        alt: "Intimate portrait of the wedding couple in traditional dress with warm sunlight",
+   200→        span: "full",
+   201→      },
+   202→      {
+   203→        src: "/gallery/104A1336.jpg",
+   204→        alt: "Newlyweds walking together through an open landscape in their wedding finery",
+   205→        span: "full",
+   206→      },
+   207→    ],
+   208→  },
+   209→];
+   210→
+   211→/* ═══════════════════════════════════════════════════════════════════════════════
+   212→   LIGHTBOX
+   213→   ═══════════════════════════════════════════════════════════════════════════════ */
+   214→
+   215→function Lightbox({
+   216→  images,
+   217→  index,
+   218→  onClose,
+   219→  onPrev,
+   220→  onNext,
+   221→}: {
+   222→  images: readonly { src: string; alt: string }[];
+   223→  index: number;
+   224→  onClose: () => void;
+   225→  onPrev: () => void;
+   226→  onNext: () => void;
+   227→}) {
+   228→  const img = images[index];
+   229→  const count = images.length;
+   230→
+   231→  useEffect(() => {
+   232→    const onKey = (e: KeyboardEvent) => {
+   233→      if (e.key === "Escape") onClose();
+   234→      if (e.key === "ArrowLeft") onPrev();
+   235→      if (e.key === "ArrowRight") onNext();
+   236→    };
+   237→    window.addEventListener("keydown", onKey);
+   238→    return () => window.removeEventListener("keydown", onKey);
+   239→  }, [onClose, onPrev, onNext]);
+   240→
+   241→  return (
+   242→    <div
+   243→      className="veris-lightbox"
+   244→      role="dialog"
+   245→      aria-modal="true"
+   246→      aria-label={`Image ${index + 1} of ${count}`}
+   247→    >
+   248→      <div className="veris-lightbox-backdrop" onClick={onClose} />
+   249→      <button
+   250→        className="veris-lightbox-close"
+   251→        onClick={onClose}
+   252→        aria-label="Close"
+   253→      >
+   254→        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1">
+   255→          <line x1="2" y1="2" x2="14" y2="14" />
+   256→          <line x1="14" y1="2" x2="2" y2="14" />
+   257→        </svg>
+   258→      </button>
+   259→      <button
+   260→        className="veris-lightbox-nav veris-lightbox-prev"
+   261→        onClick={onPrev}
+   262→        aria-label="Previous image"
+   263→      >
+   264→        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1">
+   265→          <polyline points="12,4 6,10 12,16" />
+   266→        </svg>
+   267→      </button>
+   268→      <button
+   269→        className="veris-lightbox-nav veris-lightbox-next"
+   270→        onClick={onNext}
+   271→        aria-label="Next image"
+   272→      >
+   273→        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1">
+   274→          <polyline points="8,4 14,10 8,16" />
+   275→        </svg>
+   276→      </button>
+   277→      <div className="veris-lightbox-content">
+   278→        <img
+   279→          src={img.src}
+   280→          alt={img.alt}
+   281→          className="veris-lightbox-img"
+   282→          draggable={false}
+   283→        />
+   284→      </div>
+   285→      <div className="veris-lightbox-counter">
+   286→        {String(index + 1).padStart(2, "0")} &mdash; {String(count).padStart(2, "0")}
+   287→      </div>
+   288→    </div>
+   289→  );
+   290→}
+   291→
+   292→/* ═══════════════════════════════════════════════════════════════════════════════
+   293→   MAIN PAGE COMPONENT
+   294→   ═══════════════════════════════════════════════════════════════════════════════ */
+   295→
+   296→export default function Home() {
+   297→  /* ── State ──────────────────────────────────────────────────────────────────── */
+   298→  const [loadProgress, setLoadProgress] = useState(0);
+   299→  const [preloaderExiting, setPreloaderExiting] = useState(false);
+   300→  const [preloaderComplete, setPreloaderComplete] = useState(false);
+   301→  const [currentSection, setCurrentSection] = useState<string>(
+   302→    TimelineState.PRELOADER,
+   303→  );
+   304→  const [isDark, setIsDark] = useState(true);
+   305→  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+   306→  const [activeCategory, setActiveCategory] = useState(GALLERY_CATEGORIES[0].id);
+   307→
+   308→  /* ── Refs ───────────────────────────────────────────────────────────────────── */
+   309→  const canvasContainerRef = useRef<HTMLDivElement>(null);
+   310→  const appRef = useRef<VerisApp | null>(null);
+   311→
+   312→  /* ── Initialize the engine + subscribe to events atomically ──────────────────── */
+   313→  useEffect(() => {
+   314→    document.body.classList.add("no-scroll");
+   315→
+   316→    const container = canvasContainerRef.current;
+   317→    if (!container) return;
+   318→
+   319→    let mounted = true;
+   320→    const app = new VerisApp(container);
+   321→    appRef.current = app;
+   322→
+   323→    // Subscribe BEFORE init so we don't miss any events
+   324→    const bus = app.getEventBus();
+   325→
+   326→    const unsubProgress = bus.on(VerisEvent.LoadProgress, (payload: unknown) => {
+   327→      const { progress } = payload as { progress: number };
+   328→      if (mounted) setLoadProgress(progress);
+   329→    });
+   330→
+   331→    const unsubLoaded = bus.on(VerisEvent.AssetsLoaded, () => {
+   332→      if (!mounted) return;
+   333→      setTimeout(() => {
+   334→        if (!mounted) return;
+   335→        setPreloaderExiting(true);
+   336→        setTimeout(() => {
+   337→          if (!mounted) return;
+   338→          setPreloaderComplete(true);
+   339→          document.body.classList.remove("no-scroll");
+   340→        }, 1400);
+   341→      }, 300);
+   342→    });
+   343→
+   344→    const unsubSection = bus.on(
+   345→      VerisEvent.SectionChanged,
+   346→      (payload: unknown) => {
+   347→        const { to } = payload as { from: string; to: string };
+   348→        if (mounted) setCurrentSection(to);
+   349→      },
+   350→    );
+   351→
+   352→    const unsubTheme = bus.on(VerisEvent.ThemeChanged, () => {
+   353→      if (mounted) {
+   354→        try { setIsDark(app.getThemeManager().isDark()); } catch { /* not yet init'd */ }
+   355→      }
+   356→    });
+   357→
+   358→    // Now initialize and start
+   359→    app
+   360→      .init()
+   361→      .then(() => {
+   362→        if (!mounted) return;
+   363→        app.start();
+   364→      })
+   365→      .catch((err) => {
+   366→        console.error("[VerisVisuals] Init failed:", err);
+   367→      });
+   368→
+   369→    return () => {
+   370→      mounted = false;
+   371→      unsubProgress();
+   372→      unsubLoaded();
+   373→      unsubSection();
+   374→      unsubTheme();
+   375→      app.dispose();
+   376→      appRef.current = null;
+   377→    };
+   378→  }, []);
+   379→
+   380→  /* ── Theme toggle ───────────────────────────────────────────────────────────── */
+   381→  const toggleTheme = useCallback(() => {
+   382→    const app = appRef.current;
+   383→    if (!app) return;
+   384→    const next = !app.getThemeManager().isDark();
+   385→    app.setTheme(next);
+   386→    document.body.classList.toggle("veris-light", !next);
+   387→  }, []);
+   388→
+   389→  /* ── Section visibility ─────────────────────────────────────────────────────── */
+   390→  const showHero = preloaderComplete && currentSection === TimelineState.HERO;
+   391→  const showAbout =
+   392→    preloaderComplete && currentSection === TimelineState.ABOUT;
+   393→  const showArchive =
+   394→    preloaderComplete && currentSection === TimelineState.ARCHIVE;
+   395→  const showDetail =
+   396→    preloaderComplete && currentSection === TimelineState.DETAIL;
+   397→  const showContact =
+   398→    preloaderComplete && currentSection === TimelineState.CONTACT;
+   399→
+   400→  /* ── Derived gallery state ─────────────────────────────────────────────────── */
+   401→  const currentCategory = GALLERY_CATEGORIES.find((c) => c.id === activeCategory) ?? GALLERY_CATEGORIES[0];
+   402→
+   403→  /* ── Lightbox controls ─────────────────────────────────────────────────────── */
+   404→  const closeLightbox = useCallback(() => setLightboxIndex(null), []);
+   405→  const prevImage = useCallback(
+   406→    () =>
+   407→      setLightboxIndex((i) =>
+   408→        i !== null
+   409→          ? (i - 1 + currentCategory.works.length) % currentCategory.works.length
+   410→          : null,
+   411→      ),
+   412→    [currentCategory.works.length],
+   413→  );
+   414→  const nextImage = useCallback(
+   415→    () =>
+   416→      setLightboxIndex((i) =>
+   417→        i !== null
+   418→          ? (i + 1) % currentCategory.works.length
+   419→          : null,
+   420→      ),
+   421→    [currentCategory.works.length],
+   422→  );
+   423→
+   424→  /* ═══════════════════════════════════════════════════════════════════════════════
+   425→     RENDER
+   426→     ═══════════════════════════════════════════════════════════════════════════════ */
+   427→  return (
+   428→    <>
+   429→      {/* ── Three.js Canvas Container (fixed background) ──────────────────────── */}
+   430→      <div
+   431→        ref={canvasContainerRef}
+   432→        className="veris-canvas-container"
+   433→        aria-hidden="true"
+   434→      />
+   435→
+   436→      {/* ── Debug Overlay (visible only when DEBUG=true in config) ──────────── */}
+   437→      <DebugOverlay appRef={appRef} />
+   438→
+   439→      {/* ── Preloader Overlay ─────────────────────────────────────────────────── */}
+   440→      <div
+   441→        className={`veris-preloader ${preloaderExiting ? "v-entering" : ""}`}
+   442→        role="progressbar"
+   443→        aria-valuenow={Math.round(loadProgress * 100)}
+   444→        aria-valuemin={0}
+   445→        aria-valuemax={100}
+   446→        aria-label="Loading experience"
+   447→      >
+   448→        <img
+   449→          src="/logo-dark.png"
+   450→          alt=""
+   451→          className="veris-preloader-logo"
+   452→          draggable={false}
+   453→          aria-hidden="true"
+   454→        />
+   455→        <OdometerCounter value={loadProgress} />
+   456→      </div>
+   457→
+   458→      {/* ── Section: HERO ─────────────────────────────────────────────────────── */}
+   459→      <div
+   460→        className="veris-phase-overlay"
+   461→        style={{
+   462→          opacity: showHero ? 1 : 0,
+   463→          pointerEvents: showHero ? "auto" : "none",
+   464→        }}
+   465→        role="region"
+   466→        aria-label="Hero"
+   467→      >
+   468→        <div className="veris-wordmark">
+   469→          <span className="v-letter">VERIS</span>
+   470→          <span className="v-letter" style={{ opacity: 0.7 }}>
+   471→            VISUALS
+   472→          </span>
+   473→        </div>
+   474→        <p className="veris-tagline">Photography beyond documentation.</p>
+   475→        <div className="veris-hero-profile">
+   476→          <div className="veris-profile-ring">
+   477→            <img
+   478→              src="/salim-shaikh.png"
+   479→              alt="Salim Shaikh — Photographer, Mumbai"
+   480→              className="veris-profile-img"
+   481→              draggable={false}
+   482→            />
+   483→          </div>
+   484→          <div className="veris-profile-info">
+   485→            <span className="font-ui veris-profile-name">Salim Shaikh</span>
+   486→            <span className="font-ui veris-profile-location">Mumbai, India</span>
+   487→          </div>
+   488→        </div>
+   489→      </div>
+   490→
+   491→      {/* ── Section: ARCHIVE — Gallery with Category Tabs ─────────────────── */}
+   492→      <div
+   493→        className="veris-phase-overlay veris-phase-overlay--gallery"
+   494→        style={{
+   495→          opacity: showArchive ? 1 : 0,
+   496→          pointerEvents: showArchive ? "auto" : "none",
+   497→        }}
+   498→        role="region"
+   499→        aria-label="Gallery"
+   500→      >
+   501→        <header className="veris-gallery-header">
+   502→          <nav className="veris-gallery-tabs" aria-label="Gallery categories">
+   503→            {GALLERY_CATEGORIES.map((cat) => (
+   504→              <button
+   505→                key={cat.id}
+   506→                className={`veris-gallery-tab ${activeCategory === cat.id ? "active" : ""}`}
+   507→                onClick={() => { setActiveCategory(cat.id); setLightboxIndex(null); }}
+   508→                aria-pressed={activeCategory === cat.id}
+   509→              >
+   510→                {cat.label}
+   511→              </button>
+   512→            ))}
+   513→          </nav>
+   514→          <div className="veris-gallery-subtitle">
+   515→            <span className="font-display" style={{ fontSize: "clamp(1rem, 2.5vw, 1.6rem)", opacity: 0.4 }}>
+   516→              {currentCategory.subtitle}
+   517→            </span>
+   518→          </div>
+   519→        </header>
+   520→
+   521→        <div className="veris-gallery-grid" key={activeCategory}>
+   522→          {currentCategory.works.map((work, i) => (
+   523→            <button
+   524→              key={work.src}
+   525→              className={`veris-gallery-item ${work.span === "full" ? "veris-gallery-item--full" : ""}`}
+   526→              onClick={() => setLightboxIndex(i)}
+   527→              aria-label={`View: ${work.alt}`}
+   528→            >
+   529→              <img
+   530→                src={work.src}
+   531→                alt={work.alt}
+   532→                loading="lazy"
+   533→                draggable={false}
+   534→              />
+   535→              <div className="veris-gallery-item-overlay">
+   536→                <span className="veris-gallery-item-counter">
+   537→                  {String(i + 1).padStart(2, "0")}
+   538→                </span>
+   539→              </div>
+   540→            </button>
+   541→          ))}
+   542→        </div>
+   543→
+   544→        <div className="veris-gallery-footer">
+   545→          <span className="font-ui" style={{ fontSize: "0.5rem", opacity: 0.3, letterSpacing: "0.3em" }}>
+   546→            {currentCategory.footer}
+   547→          </span>
+   548→        </div>
+   549→      </div>
+   550→
+   551→      {/* ── Lightbox ─────────────────────────────────────────────────────────── */}
+   552→      {showArchive && lightboxIndex !== null && (
+   553→        <Lightbox
+   554→          images={currentCategory.works}
+   555→          index={lightboxIndex}
+   556→          onClose={closeLightbox}
+   557→          onPrev={prevImage}
+   558→          onNext={nextImage}
+   559→        />
+   560→      )}
+   561→
+   562→      {/* ── Section: ABOUT ──────────────────────────────────────────────────── */}
+   563→      <div
+   564→        className="veris-phase-overlay"
+   565→        style={{
+   566→          opacity: showAbout ? 1 : 0,
+   567→          pointerEvents: showAbout ? "auto" : "none",
+   568→        }}
+   569→        role="region"
+   570→        aria-label="About"
+   571→      >
+   572→        <div className="veris-about-container">
+   573→          <div className="veris-about-photo-ring">
+   574→            <img
+   575→              src="/salim-shaikh.png"
+   576→              alt="Salim Shaikh"
+   577→              className="veris-about-photo"
+   578→              draggable={false}
+   579→            />
+   580→          </div>
+   581→          <div className="veris-about-content">
+   582→            <div className="veris-about-label font-ui">About</div>
+   583→            <h2 className="veris-about-name font-display">Salim Shaikh</h2>
+   584→            <div className="veris-about-location font-ui">Mumbai, India</div>
+   585→            <p className="veris-about-bio">
+   586→              Photographer and visual storyteller based in Mumbai. With a keen eye
+   587→              for light, texture, and human emotion, Salim crafts imagery that
+   588→              transcends documentation — capturing the quiet poetry in every frame.
+   589→              His work spans commercial branding, editorial portraits, and intimate
+   590→              wedding storytelling, each approached with the same devotion to
+   591→              authenticity and craft.
+   592→            </p>
+   593→            <div className="veris-about-specialties">
+   594→              {[
+   595→                "Commercial",
+   596→                "Weddings",
+   597→                "Portraits",
+   598→                "Editorial",
+   599→                "Product",
+   600→              ].map((s) => (
+   601→                <span key={s} className="veris-about-tag font-ui">
+   602→                  {s}
+   603→                </span>
+   604→              ))}
+   605→            </div>
+   606→          </div>
+   607→        </div>
+   608→      </div>
+   609→
+   610→      {/* ── Section: DETAIL — Selected Works ────────────────────────────────── */}
+   611→      <div
+   612→        className="veris-phase-overlay veris-phase-overlay--detail"
+   613→        style={{
+   614→          opacity: showDetail ? 1 : 0,
+   615→          pointerEvents: showDetail ? "auto" : "none",
+   616→        }}
+   617→        role="region"
+   618→        aria-label="Selected Works"
+   619→      >
+   620→        <header className="veris-detail-header">
+   621→          <div className="veris-detail-label font-ui">Selected Works</div>
+   622→          <h2
+   623→            className="veris-detail-title font-display"
+   624→            style={{
+   625→              fontSize: "clamp(1.2rem, 3vw, 2.2rem)",
+   626→              opacity: 0.5,
+   627→            }}
+   628→          >
+   629→            Curated Selection
+   630→          </h2>
+   631→        </header>
+   632→        <div className="veris-detail-grid">
+   633→          <article className="veris-detail-card">
+   634→            <div className="veris-detail-card-img">
+   635→              <img
+   636→                src="/gallery/CH_F0033.jpg"
+   637→                alt="JRL grooming tools product photography"
+   638→                loading="lazy"
+   639→                draggable={false}
+   640→              />
+   641→            </div>
+   642→            <div className="veris-detail-card-info">
+   643→              <span className="veris-detail-card-category font-ui">
+   644→                Commercial
+   645→              </span>
+   646→              <h3 className="veris-detail-card-title font-display">
+   647→                JRL Grooming Tools
+   648→              </h3>
+   649→              <p className="veris-detail-card-desc">
+   650→                Minimalist product photography for premium grooming brand.
+   651→              </p>
+   652→            </div>
+   653→          </article>
+   654→          <article className="veris-detail-card">
+   655→            <div className="veris-detail-card-img">
+   656→              <img
+   657→                src="/gallery/104A0939.jpg"
+   658→                alt="Wedding couple in traditional Indian attire"
+   659→                loading="lazy"
+   660→                draggable={false}
+   661→              />
+   662→            </div>
+   663→            <div className="veris-detail-card-info">
+   664→              <span className="veris-detail-card-category font-ui">
+   665→                Weddings
+   666→              </span>
+   667→              <h3 className="veris-detail-card-title font-display">
+   668→                Golden Hour Vows
+   669→              </h3>
+   670→              <p className="veris-detail-card-desc">
+   671→                Intimate wedding portrait captured in warm natural light.
+   672→              </p>
+   673→            </div>
+   674→          </article>
+   675→          <article className="veris-detail-card">
+   676→            <div className="veris-detail-card-img">
+   677→              <img
+   678→                src="/gallery/CH_F6290.jpg"
+   679→                alt="JRL hair dryers dark gradient background"
+   680→                loading="lazy"
+   681→                draggable={false}
+   682→              />
+   683→            </div>
+   684→            <div className="veris-detail-card-info">
+   685→              <span className="veris-detail-card-category font-ui">
+   686→                Commercial
+   687→              </span>
+   688→              <h3 className="veris-detail-card-title font-display">
+   689→                Shadow & Form
+   690→              </h3>
+   691→              <p className="veris-detail-card-desc">
+   692→                Dark gradient study for premium hair dryer campaign.
+   693→              </p>
+   694→            </div>
+   695→          </article>
+   696→        </div>
+   697→        <div className="veris-detail-footer">
+   698→          <span
+   699→            className="font-ui"
+   700→            style={{
+   701→              fontSize: "0.5rem",
+   702→              opacity: 0.3,
+   703→              letterSpacing: "0.3em",
+   704→            }}
+   705→          >
+   706→            3 Selected Works
+   707→          </span>
+   708→        </div>
+   709→      </div>
+   710→
+   711→      {/* ── Section: CONTACT — Commission Page ──────────────────────────────── */}
+   712→      <div
+   713→        className="veris-phase-overlay veris-phase-overlay--commission"
+   714→        style={{
+   715→          opacity: showContact ? 1 : 0,
+   716→          pointerEvents: showContact ? "auto" : "none",
+   717→        }}
+   718→        role="region"
+   719→        aria-label="Commission"
+   720→      >
+   721→        <div className="veris-commission-inner">
+   722→          {/* Header */}
+   723→          <header className="veris-commission-header">
+   724→            <div className="veris-commission-label font-ui">Commission</div>
+   725→            <h2 className="veris-commission-heading font-display">
+   726→              Let&apos;s Create
+   727→              <br />
+   728→              Together
+   729→            </h2>
+   730→            <p className="veris-commission-sub">
+   731→              Every project begins with a conversation.
+   732→              Fill in the details below and I&apos;ll get back to you.
+   733→            </p>
+   734→          </header>
+   735→
+   736→          {/* Contact Form — placed first so it's immediately visible */}
+   737→          <form
+   738→            className="veris-form"
+   739→            onSubmit={(e) => e.preventDefault()}
+   740→            aria-label="Commission inquiry"
+   741→          >
+   742→            <div className="veris-form-row">
+   743→              <div className="veris-form-group">
+   744→                <label className="veris-form-label font-ui" htmlFor="comm-name">
+   745→                  Name
+   746→                </label>
+   747→                <input
+   748→                  id="comm-name"
+   749→                  type="text"
+   750→                  className="veris-form-input"
+   751→                  placeholder="Your name"
+   752→                  autoComplete="name"
+   753→                />
+   754→              </div>
+   755→              <div className="veris-form-group">
+   756→                <label className="veris-form-label font-ui" htmlFor="comm-email">
+   757→                  Email
+   758→                </label>
+   759→                <input
+   760→                  id="comm-email"
+   761→                  type="email"
+   762→                  className="veris-form-input"
+   763→                  placeholder="your@email.com"
+   764→                  autoComplete="email"
+   765→                />
+   766→              </div>
+   767→            </div>
+   768→            <div className="veris-form-group">
+   769→              <label className="veris-form-label font-ui" htmlFor="comm-type">
+   770→                Project Type
+   771→              </label>
+   772→              <select id="comm-type" className="veris-form-select font-ui">
+   773→                <option value="" disabled>
+   774→                  Select a category
+   775→                </option>
+   776→                <option value="commercial">Commercial / Branding</option>
+   777→                <option value="wedding">Wedding</option>
+   778→                <option value="portrait">Portrait / Personal</option>
+   779→                <option value="editorial">Editorial</option>
+   780→                <option value="product">Product Photography</option>
+   781→                <option value="other">Other</option>
+   782→              </select>
+   783→            </div>
+   784→            <div className="veris-form-group">
+   785→              <label className="veris-form-label font-ui" htmlFor="comm-msg">
+   786→                Message
+   787→              </label>
+   788→              <textarea
+   789→                id="comm-msg"
+   790→                className="veris-form-textarea"
+   791→                placeholder="Tell me about your project, timeline, and any references..."
+   792→                rows={4}
+   793→              />
+   794→            </div>
+   795→            <button type="submit" className="veris-form-submit font-ui">
+   796→              Send Inquiry
+   797→            </button>
+   798→          </form>
+   799→
+   800→          {/* Services — informational, below the form */}
+   801→          <section className="veris-services" aria-label="Services">
+   802→            <div className="veris-services-title font-ui">Services</div>
+   803→            <div className="veris-services-grid">
+   804→              <div className="veris-service-card">
+   805→                <h3 className="veris-service-card-title font-display">
+   806→                  Commercial
+   807→                </h3>
+   808→                <p className="veris-service-card-desc">
+   809→                  Product, branding, and editorial photography for businesses.
+   810→                  Clean, intentional imagery that elevates your brand.
+   811→                </p>
+   812→              </div>
+   813→              <div className="veris-service-card">
+   814→                <h3 className="veris-service-card-title font-display">
+   815→                  Weddings
+   816→                </h3>
+   817→                <p className="veris-service-card-desc">
+   818→                  Documentary-style wedding coverage capturing authentic moments
+   819→                  and the quiet poetry of your celebration.
+   820→                </p>
+   821→              </div>
+   822→              <div className="veris-service-card">
+   823→                <h3 className="veris-service-card-title font-display">
+   824→                  Portraits
+   825→                </h3>
+   826→                <p className="veris-service-card-desc">
+   827→                  Personal and editorial portraits in studio or on location.
+   828→                  Focused on natural light and genuine expression.
+   829→                </p>
+   830→              </div>
+   831→            </div>
+   832→          </section>
+   833→
+   834→          {/* Process */}
+   835→          <section className="veris-process" aria-label="Process">
+   836→            <div className="veris-process-title font-ui">Process</div>
+   837→            <div className="veris-process-steps">
+   838→              <div className="veris-process-step">
+   839→                <span className="veris-process-step-num font-display">01</span>
+   840→                <span className="veris-process-step-name font-ui">Inquiry</span>
+   841→                <p className="veris-process-step-desc">
+   842→                  Share your vision, timeline, and budget.
+   843→                </p>
+   844→              </div>
+   845→              <div className="veris-process-step">
+   846→                <span className="veris-process-step-num font-display">02</span>
+   847→                <span className="veris-process-step-name font-ui">Consult</span>
+   848→                <p className="veris-process-step-desc">
+   849→                  A call to align on creative direction, logistics, and deliverables.
+   850→                </p>
+   851→              </div>
+   852→              <div className="veris-process-step">
+   853→                <span className="veris-process-step-num font-display">03</span>
+   854→                <span className="veris-process-step-name font-ui">Shoot</span>
+   855→                <p className="veris-process-step-desc">
+   856→                  The session itself — focused, intentional, and collaborative.
+   857→                </p>
+   858→              </div>
+   859→              <div className="veris-process-step">
+   860→                <span className="veris-process-step-num font-display">04</span>
+   861→                <span className="veris-process-step-name font-ui">Deliver</span>
+   862→                <p className="veris-process-step-desc">
+   863→                  Curated, retouched gallery delivered within the agreed timeline.
+   864→                </p>
+   865→              </div>
+   866→            </div>
+   867→          </section>
+   868→
+   869→          {/* Footer Links */}
+   870→          <footer className="veris-commission-footer">
+   871→            <div className="veris-commission-links">
+   872→              <a
+   873→                href="mailto:hello@verisvisuals.com"
+   874→                className="veris-commission-link font-ui"
+   875→              >
+   876→                <svg
+   877→                  width="12"
+   878→                  height="12"
+   879→                  viewBox="0 0 24 24"
+   880→                  fill="none"
+   881→                  stroke="currentColor"
+   882→                  strokeWidth="1.5"
+   883→                  aria-hidden="true"
+   884→                >
+   885→                  <rect x="2" y="4" width="20" height="16" rx="2" />
+   886→                  <polyline points="22,4 12,13 2,4" />
+   887→                </svg>
+   888→                hello@verisvisuals.com
+   889→              </a>
+   890→              <a
+   891→                href="https://instagram.com/verisvisuals"
+   892→                target="_blank"
+   893→                rel="noopener noreferrer"
+   894→                className="veris-commission-link font-ui"
+   895→              >
+   896→                <svg
+   897→                  width="12"
+   898→                  height="12"
+   899→                  viewBox="0 0 24 24"
+   900→                  fill="none"
+   901→                  stroke="currentColor"
+   902→                  strokeWidth="1.5"
+   903→                  aria-hidden="true"
+   904→                >
+   905→                  <rect x="2" y="2" width="20" height="20" rx="5" />
+   906→                  <circle cx="12" cy="12" r="5" />
+   907→                  <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none" />
+   908→                </svg>
+   909→                @verisvisuals
+   910→              </a>
+   911→              <a
+   912→                href="https://wa.me/919876543210"
+   913→                target="_blank"
+   914→                rel="noopener noreferrer"
+   915→                className="veris-commission-link font-ui"
+   916→              >
+   917→                <svg
+   918→                  width="12"
+   919→                  height="12"
+   920→                  viewBox="0 0 24 24"
+   921→                  fill="none"
+   922→                  stroke="currentColor"
+   923→                  strokeWidth="1.5"
+   924→                  aria-hidden="true"
+   925→                >
+   926→                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+   927→                </svg>
+   928→                WhatsApp
+   929→              </a>
+   930→            </div>
+   931→            <div className="veris-commission-location font-ui">
+   932→              Based in Mumbai, India
+   933→            </div>
+   934→          </footer>
+   935→        </div>
+   936→      </div>
+   937→
+   938→      {/* ── Theme Toggle ──────────────────────────────────────────────────────── */}
+   939→      {preloaderComplete && (
+   940→        <button
+   941→          className="veris-theme-toggle"
+   942→          onClick={toggleTheme}
+   943→          aria-label={`Switch to ${isDark ? "Gallery" : "Studio"} mode`}
+   944→        >
+   945→          {isDark ? "Studio" : "Gallery"}
+   946→        </button>
+   947→      )}
+   948→
+   949→      {/* ── Scroll Hint ──────────────────────────────────────────────────────── */}
+   950→      {preloaderComplete && currentSection === TimelineState.HERO && (
+   951→        <div className="veris-scroll-hint visible" aria-hidden="true">
+   952→          Scroll to explore
+   953→        </div>
+   954→      )}
+   955→
+   956→      {/* ── Section Navigation Dots ───────────────────────────────────────────── */}
+   957→      {preloaderComplete && (
+   958→        <nav className="veris-nav-dots" aria-label="Section navigation">
+   959→          {[
+   960→            { state: TimelineState.HERO, label: "Hero" },
+   961→            { state: TimelineState.ABOUT, label: "About" },
+   962→            { state: TimelineState.ARCHIVE, label: "Archive" },
+   963→            { state: TimelineState.DETAIL, label: "Works" },
+   964→            { state: TimelineState.CONTACT, label: "Commission" },
+   965→          ].map(({ state, label }) => (
+   966→            <button
+   967→              key={state}
+   968→              className={`veris-nav-dot ${currentSection === state ? "active" : ""}`}
+   969→              aria-label={label}
+   970→              aria-current={currentSection === state ? "true" : undefined}
+   971→            />
+   972→          ))}
+   973→        </nav>
+   974→      )}
+   975→    </>
+   976→  );
+   977→}

@@ -302,9 +302,10 @@ body.veris-light .veris-profile-img {
 }
 
 .veris-profile-name {
-  font-size: 0.55rem;
+  font-size: 0.7rem;
   opacity: 0.55;
-  letter-spacing: 0.25em;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
   transition: opacity 600ms ease;
 }
 
@@ -313,9 +314,9 @@ body.veris-light .veris-profile-img {
 }
 
 .veris-profile-location {
-  font-size: 0.5rem;
-  opacity: 0.35;
-  letter-spacing: 0.2em;
+  font-size: 0.6rem;
+  opacity: 0.4;
+  letter-spacing: 0.15em;
   transition: opacity 600ms ease;
 }
 
@@ -762,23 +763,32 @@ body.veris-light .veris-about-photo-ring {
   opacity: 0.9;
 }
 
+.veris-about-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .veris-about-label {
-  font-size: 0.5rem;
+  font-size: 0.65rem;
   opacity: 0.5;
-  letter-spacing: 0.4em;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
 }
 
 .veris-about-name {
   font-size: clamp(1.6rem, 4vw, 2.8rem);
   letter-spacing: 0.05em;
-  line-height: 1.1;
+  line-height: 1.15;
+  margin: 0.25rem 0;
 }
 
 .veris-about-location {
-  font-size: 0.5rem;
+  font-size: 0.7rem;
   opacity: 0.5;
-  letter-spacing: 0.25em;
-  margin-top: -0.5rem;
+  letter-spacing: 0.18em;
+  margin-top: 0.15rem;
 }
 
 .veris-about-bio {

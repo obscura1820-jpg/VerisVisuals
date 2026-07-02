@@ -231,3 +231,24 @@ Stage Summary:
 - All commission page elements properly styled and aligned
 - ESLint: 0 errors, 0 warnings
 - Browser + VLM verified: zero layout issues
+---
+Task ID: 10
+Agent: Main Agent
+Task: Fix "Mumbai, India" text alignment below "Salim Shaikh" on the About/Profile page
+
+Work Log:
+- Analyzed CSS for .veris-about-location (was 0.5rem with margin-top: -0.5rem — tiny font with negative margin pulling into name)
+- Analyzed CSS for .veris-about-label (was 0.5rem — extremely small)
+- Analyzed .veris-about-content (had no CSS rule — children stacked without spacing control)
+- Added .veris-about-content flex container with gap: 0.35rem for consistent vertical spacing
+- Increased .veris-about-label font-size from 0.5rem to 0.65rem, added text-transform: uppercase
+- Added margin: 0.25rem 0 and line-height: 1.15 to .veris-about-name for breathing room
+- Fixed .veris-about-location: font-size 0.5rem → 0.7rem, removed negative margin (-0.5rem → 0.15rem), letter-spacing 0.25em → 0.18em
+- Also fixed hero profile: .veris-profile-name 0.55rem → 0.7rem, .veris-profile-location 0.5rem → 0.6rem
+- Verified with Agent Browser + VLM: all text elements properly centered with consistent spacing, no alignment issues
+
+Stage Summary:
+- "Mumbai, India" text now properly aligned below "Salim Shaikh" with readable font size and correct spacing
+- About section text hierarchy: ABOUT label → Salim Shaikh (large) → Mumbai, India (medium-small) → Bio → Tags — all centered and well-spaced
+- Hero profile location also improved for consistency
+
