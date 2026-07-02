@@ -728,81 +728,12 @@ export default function Home() {
               Together
             </h2>
             <p className="veris-commission-sub">
-              Available for commercial, editorial, and wedding commissions.
               Every project begins with a conversation.
+              Fill in the details below and I&apos;ll get back to you.
             </p>
           </header>
 
-          {/* Services */}
-          <section className="veris-services" aria-label="Services">
-            <div className="veris-services-title font-ui">Services</div>
-            <div className="veris-services-grid">
-              <div className="veris-service-card">
-                <h3 className="veris-service-card-title font-display">
-                  Commercial
-                </h3>
-                <p className="veris-service-card-desc">
-                  Product, branding, and editorial photography for businesses.
-                  Clean, intentional imagery that elevates your brand.
-                </p>
-              </div>
-              <div className="veris-service-card">
-                <h3 className="veris-service-card-title font-display">
-                  Weddings
-                </h3>
-                <p className="veris-service-card-desc">
-                  Documentary-style wedding coverage capturing authentic moments
-                  and the quiet poetry of your celebration.
-                </p>
-              </div>
-              <div className="veris-service-card">
-                <h3 className="veris-service-card-title font-display">
-                  Portraits
-                </h3>
-                <p className="veris-service-card-desc">
-                  Personal and editorial portraits in studio or on location.
-                  Focused on natural light and genuine expression.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Process */}
-          <section className="veris-process" aria-label="Process">
-            <div className="veris-process-title font-ui">Process</div>
-            <div className="veris-process-steps">
-              <div className="veris-process-step">
-                <span className="veris-process-step-num font-display">01</span>
-                <span className="veris-process-step-name font-ui">Inquiry</span>
-                <p className="veris-process-step-desc">
-                  Share your vision, timeline, and budget through the form below.
-                </p>
-              </div>
-              <div className="veris-process-step">
-                <span className="veris-process-step-num font-display">02</span>
-                <span className="veris-process-step-name font-ui">Consult</span>
-                <p className="veris-process-step-desc">
-                  A call to align on creative direction, logistics, and deliverables.
-                </p>
-              </div>
-              <div className="veris-process-step">
-                <span className="veris-process-step-num font-display">03</span>
-                <span className="veris-process-step-name font-ui">Shoot</span>
-                <p className="veris-process-step-desc">
-                  The session itself — focused, intentional, and collaborative.
-                </p>
-              </div>
-              <div className="veris-process-step">
-                <span className="veris-process-step-num font-display">04</span>
-                <span className="veris-process-step-name font-ui">Deliver</span>
-                <p className="veris-process-step-desc">
-                  Curated, retouched gallery delivered within the agreed timeline.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Contact Form */}
+          {/* Contact Form — placed first so it's immediately visible */}
           <form
             className="veris-form"
             onSubmit={(e) => e.preventDefault()}
@@ -865,6 +796,75 @@ export default function Home() {
               Send Inquiry
             </button>
           </form>
+
+          {/* Services — informational, below the form */}
+          <section className="veris-services" aria-label="Services">
+            <div className="veris-services-title font-ui">Services</div>
+            <div className="veris-services-grid">
+              <div className="veris-service-card">
+                <h3 className="veris-service-card-title font-display">
+                  Commercial
+                </h3>
+                <p className="veris-service-card-desc">
+                  Product, branding, and editorial photography for businesses.
+                  Clean, intentional imagery that elevates your brand.
+                </p>
+              </div>
+              <div className="veris-service-card">
+                <h3 className="veris-service-card-title font-display">
+                  Weddings
+                </h3>
+                <p className="veris-service-card-desc">
+                  Documentary-style wedding coverage capturing authentic moments
+                  and the quiet poetry of your celebration.
+                </p>
+              </div>
+              <div className="veris-service-card">
+                <h3 className="veris-service-card-title font-display">
+                  Portraits
+                </h3>
+                <p className="veris-service-card-desc">
+                  Personal and editorial portraits in studio or on location.
+                  Focused on natural light and genuine expression.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Process */}
+          <section className="veris-process" aria-label="Process">
+            <div className="veris-process-title font-ui">Process</div>
+            <div className="veris-process-steps">
+              <div className="veris-process-step">
+                <span className="veris-process-step-num font-display">01</span>
+                <span className="veris-process-step-name font-ui">Inquiry</span>
+                <p className="veris-process-step-desc">
+                  Share your vision, timeline, and budget.
+                </p>
+              </div>
+              <div className="veris-process-step">
+                <span className="veris-process-step-num font-display">02</span>
+                <span className="veris-process-step-name font-ui">Consult</span>
+                <p className="veris-process-step-desc">
+                  A call to align on creative direction, logistics, and deliverables.
+                </p>
+              </div>
+              <div className="veris-process-step">
+                <span className="veris-process-step-num font-display">03</span>
+                <span className="veris-process-step-name font-ui">Shoot</span>
+                <p className="veris-process-step-desc">
+                  The session itself — focused, intentional, and collaborative.
+                </p>
+              </div>
+              <div className="veris-process-step">
+                <span className="veris-process-step-num font-display">04</span>
+                <span className="veris-process-step-name font-ui">Deliver</span>
+                <p className="veris-process-step-desc">
+                  Curated, retouched gallery delivered within the agreed timeline.
+                </p>
+              </div>
+            </div>
+          </section>
 
           {/* Footer Links */}
           <footer className="veris-commission-footer">
