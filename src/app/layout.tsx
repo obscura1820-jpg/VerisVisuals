@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Inter } from "next/font/google";
+import { Playfair_Display, Montserrat } from "next/font/google";
 import "./globals.css";
 
-const cormorant = Cormorant_Garamond({
-  weight: ["600"],
+const playfair = Playfair_Display({
+  weight: ["700"],
   subsets: ["latin"],
-  variable: "--font-cormorant",
+  variable: "--font-playfair",
   display: "swap",
 });
 
-const inter = Inter({
-  weight: ["500"],
+const montserrat = Montserrat({
+  weight: ["400", "500"],
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-montserrat",
   display: "swap",
 });
 
@@ -49,7 +49,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${cormorant.variable} ${inter.variable} antialiased`}
+        className={`${playfair.variable} ${montserrat.variable} antialiased`}
       >
         {children}
       </body>

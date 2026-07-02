@@ -47,7 +47,7 @@ function OdometerCounter({ value }: { value: number }) {
           marginLeft: "0.15em",
           opacity: 0.6,
           fontWeight: 400,
-          fontFamily: "var(--font-inter)",
+          fontFamily: "var(--font-montserrat)",
           letterSpacing: "0.1em",
         }}
       >

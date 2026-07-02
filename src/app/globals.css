@@ -4,8 +4,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-cormorant: var(--font-cormorant);
-  --font-inter: var(--font-inter);
+  --font-playfair: var(--font-playfair);
+  --font-montserrat: var(--font-montserrat);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -29,7 +29,7 @@ html {
 }
 
 body {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   background: var(--veris-bg);
   color: var(--veris-fg);
   overflow-x: hidden;
@@ -61,15 +61,15 @@ body.veris-light {
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 .font-display {
-  font-family: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
-  font-weight: 600;
+  font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
+  font-weight: 700;
   letter-spacing: 0;
 }
 
 .font-ui {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  font-weight: 500;
-  letter-spacing: 0.25em;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
 }
 
@@ -183,10 +183,10 @@ body.veris-light {
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 .veris-wordmark {
-  font-family: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
-  font-weight: 600;
+  font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
+  font-weight: 700;
   font-size: clamp(2.5rem, 8vw, 7rem);
-  letter-spacing: 0.15em;
+  letter-spacing: 0.1em;
   text-align: center;
   line-height: 1.1;
   user-select: none;
@@ -219,10 +219,10 @@ body.veris-light .veris-wordmark .v-letter::after {
 }
 
 .veris-tagline {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   font-weight: 400;
   font-size: clamp(0.7rem, 1.5vw, 1rem);
-  letter-spacing: 0.2em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   margin-top: 2rem;
   opacity: 0.7;
@@ -333,7 +333,7 @@ body.veris-light .veris-profile-img {
   bottom: 2rem;
   left: 2rem;
   z-index: 50;
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   font-weight: 500;
   font-size: 0.6rem;
   letter-spacing: 0.3em;
@@ -362,7 +362,7 @@ body.veris-light .veris-profile-img {
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   font-size: 0.55rem;
   letter-spacing: 0.3em;
   text-transform: uppercase;
@@ -453,7 +453,7 @@ body.veris-light .veris-profile-img {
 }
 
 .veris-gallery-tab {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   font-size: 0.55rem;
   font-weight: 500;
   letter-spacing: 0.3em;
@@ -584,7 +584,7 @@ body.veris-light .veris-profile-img {
 }
 
 .veris-gallery-item-counter {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   font-size: 0.5rem;
   font-weight: 500;
   letter-spacing: 0.15em;
@@ -709,7 +709,7 @@ body.veris-light .veris-lightbox-backdrop {
   left: 50%;
   transform: translateX(-50%);
   z-index: 2;
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   font-size: 0.55rem;
   font-weight: 400;
   letter-spacing: 0.3em;
@@ -779,7 +779,7 @@ body.veris-light .veris-about-photo-ring {
 
 .veris-about-name {
   font-size: clamp(1.6rem, 4vw, 2.8rem);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   line-height: 1.15;
   margin: 0.25rem 0;
 }
@@ -792,7 +792,7 @@ body.veris-light .veris-about-photo-ring {
 }
 
 .veris-about-bio {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   font-weight: 400;
   font-size: clamp(0.7rem, 1.4vw, 0.9rem);
   line-height: 1.8;
@@ -927,7 +927,7 @@ body.veris-light .veris-about-photo-ring {
 }
 
 .veris-detail-card-desc {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   font-weight: 400;
   font-size: clamp(0.6rem, 1vw, 0.75rem);
   line-height: 1.6;
@@ -990,7 +990,7 @@ body.veris-light .veris-about-photo-ring {
 }
 
 .veris-commission-sub {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   font-weight: 400;
   font-size: clamp(0.7rem, 1.3vw, 0.85rem);
   line-height: 1.7;
@@ -1049,7 +1049,7 @@ body.veris-light .veris-about-photo-ring {
 }
 
 .veris-service-card-desc {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   font-weight: 400;
   font-size: clamp(0.6rem, 1vw, 0.7rem);
   line-height: 1.6;
@@ -1114,7 +1114,7 @@ body.veris-light .veris-about-photo-ring {
 }
 
 .veris-process-step-num {
-  font-family: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+  font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
   font-weight: 600;
   font-size: 1.4rem;
   opacity: 0.35;
@@ -1128,7 +1128,7 @@ body.veris-light .veris-about-photo-ring {
 }
 
 .veris-process-step-desc {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   font-weight: 400;
   font-size: 0.55rem;
   opacity: 0.5;
@@ -1175,7 +1175,7 @@ body.veris-light .veris-about-photo-ring {
 .veris-form-select,
 .veris-form-textarea {
   width: 100%;
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   font-weight: 400;
   font-size: 0.7rem;
   letter-spacing: 0.02em;
@@ -1228,7 +1228,7 @@ body.veris-light .veris-form-select option {
 }
 
 .veris-form-submit {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
   font-weight: 500;
   font-size: 0.55rem;
   letter-spacing: 0.25em;
