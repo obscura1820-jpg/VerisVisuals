@@ -207,3 +207,27 @@ Stage Summary:
 - Commission page: VLM verified all 7 key elements visible
 - ESLint: 0 errors, 0 warnings
 - Mobile responsive verified (390x844)
+
+---
+Task ID: 9
+Agent: Main Coordinator
+Task: Fix commission page CSS distortion
+
+Work Log:
+- Diagnosed root cause: Stale .next CSS cache contained old `.veris-contact-*` rules instead of new `.veris-commission-*` rules
+- The commission CSS was present in the source file (globals.css) but Tailwind/Next.js compilation was serving cached output
+- Verified by examining compiled CSS: had 9 occurrences of `veris-contact` and 0 of `veris-commission`
+- Cleared .next cache (`rm -rf .next`) and recompiled — CSS now correctly includes all commission styles
+- Browser-verified all commission layout properties are correctly applied:
+  - Overlay: justify-content: flex-start, align-items: stretch, overflow: auto, padding: 0
+  - Inner: display: flex, flex-direction: column, proper padding (69px top, 64px bottom, 32px left), gap: 48px, max-width: 720px
+  - scrollHeight: 1291 vs clientHeight: 577 → content properly scrollable
+- VLM analysis confirmed: all 3 sections (header/services, process steps, form/footer) properly aligned with no distortion
+- All other sections (Hero, About, Archive, Detail) unaffected by the fix
+
+Stage Summary:
+- Root cause: Stale CSS compilation cache serving old contact classes instead of new commission classes
+- Fix: Cleared .next directory and recompiled
+- All commission page elements properly styled and aligned
+- ESLint: 0 errors, 0 warnings
+- Browser + VLM verified: zero layout issues
